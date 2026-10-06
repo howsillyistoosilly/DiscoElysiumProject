@@ -63,22 +63,27 @@ APIs are separate from this generic APK shell.
    git push -u origin main
    ```
 
-2. Open **Actions → Build Android APK → Run workflow**.
-3. Download the `disco-check-debug-apk` artifact.
-4. On the phone, enable installation from the browser/files app, open the APK,
-   and install it. For USB installation:
+2. Create and push a version tag:
 
    ```sh
-   adb install -r app-debug.apk
+   git tag v1.0.0
+   git push origin v1.0.0
    ```
 
-Pushing a tag such as `v1.0.0` also runs the workflow:
+3. GitHub Actions builds the APK and creates a **Disco Check v1.0.0** release
+   with the APK attached as a downloadable asset. It also uploads the APK as a
+   workflow artifact.
+4. On the phone, enable installation from the browser/files app, download the
+   APK from the GitHub release, and open it to install.
+
+For a build without publishing a release, open **Actions → Build Android APK →
+Run workflow** and download the generated artifact.
+
+For USB installation after downloading:
 
 ```sh
-git tag v1.0.0
-git push origin v1.0.0
+adb install -r disco-check-v1.0.0.apk
 ```
 
-The first APK is unsigned debug output. A public GitHub release should use a
-private signing key stored in GitHub Actions secrets before distributing a
-release APK.
+The APK is currently unsigned debug output. A public release should use a
+private signing key stored in GitHub Actions secrets before distributing it.
