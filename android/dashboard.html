@@ -30,8 +30,6 @@
     .skill::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#0001, #000b); }
     .skill img { width: 100%; height: 100%; object-fit: cover; }
     .skill-name { position: absolute; right: 7px; bottom: 9px; left: 7px; overflow: hidden; text-shadow: 0 1px 5px #000; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; }
-    .skill-add { display: grid; place-items: center; border: 1px dashed #777; color: #bbb; background: #171717; box-shadow: none; font-size: 28px; }
-    .skill-add::before { display: none; }
     .detail { display: none; }
     .detail.active { display: block; }
     .grid-view.hidden { display: none; }
@@ -42,7 +40,6 @@
     .detail-title { position: absolute; right: 18px; bottom: 18px; left: 18px; z-index: 1; margin: 0; color: #fff; font-size: 25px; font-weight: 400; letter-spacing: -.04em; text-shadow: 0 2px 8px #000; }
     .detail-line { position: relative; margin: 0 0 10px; padding: 14px 38px 14px 15px; border-left: 2px solid var(--accent); border-radius: 3px 12px 12px 3px; color: #ddd; background: #151515; font-size: 13px; line-height: 1.5; }
     .detail-line button { position: absolute; top: 9px; right: 9px; border: 0; color: #888; background: transparent; font-size: 16px; }
-    .add-line { width: 100%; margin-top: 5px; border: 1px dashed #666; border-radius: 12px; padding: 13px; color: #ccc; background: transparent; font: 12px Georgia, serif; }
     .screen-actions { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .empty { padding: 25px 4px; color: var(--muted); font-size: 13px; }
     nav { position: fixed; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); }
@@ -75,13 +72,11 @@
       <div class="screen-actions"><button id="back" class="back">‹ All skills</button><button class="more" aria-label="More">⋮</button></div>
       <div class="detail-hero"><img id="detail-image" alt=""><h1 id="detail-title" class="detail-title"></h1></div>
       <section id="detail-lines"></section>
-      <button id="add-line" class="add-line" type="button">+ Add line</button>
     </section>
   </main>
-  <nav><div class="nav-inner">
+  <nav><div class="nav-inner two-items">
     <button class="nav-item active"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16l3-4 3 2 5-7"></path></svg>Lines</button>
-    <button class="nav-item" id="roll-nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><circle cx="9" cy="9" r="1"></circle><circle cx="15" cy="15" r="1"></circle></svg>Roll</button>
-    <button class="nav-item" id="save-nav"><svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5zM8 4v6h8V4M8 16h8"></path></svg>Save</button>
+    <button class="nav-item" id="widget-nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 15c2-4 4-6 8-6M8 18h8"></path></svg>Widget</button>
   </div></nav>
   <dialog id="editor">
     <form method="dialog">

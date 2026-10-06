@@ -48,22 +48,6 @@ function render() {
     row.addEventListener("click", () => openSkill(index));
     list.appendChild(row);
   });
-  const add = document.createElement("button");
-  add.className = "skill skill-add";
-  add.type = "button";
-  add.innerHTML = '<span aria-hidden="true">+</span><span class="skill-name">ADD LINE</span>';
-  add.addEventListener("click", addSkill);
-  list.appendChild(add);
-}
-
-function addSkill() {
-  lines.push({
-    title: "NEW SKILL",
-    quote: "Write a new thought.",
-    asset: "",
-    lines: [{ quote: "Write a new thought." }]
-  });
-  openSkill(lines.length - 1);
 }
 
 function openSkill(index) {
@@ -99,11 +83,6 @@ function openEditor(lineIndex) {
   editor.showModal();
 }
 
-function addLine() {
-  lines[activeSkillIndex].lines.push({ quote: "Write a new thought." });
-  openEditor(lines[activeSkillIndex].lines.length - 1);
-}
-
 document.querySelector("#search").addEventListener("input", render);
 document.querySelector("#editor form").addEventListener("submit", event => {
   event.preventDefault();
@@ -126,11 +105,9 @@ document.querySelector("#back").addEventListener("click", () => {
   activeSkillIndex = -1;
   render();
 });
-document.querySelector("#add-line").addEventListener("click", addLine);
 function saveLines() {
   localStorage.setItem(storageKey, JSON.stringify(lines));
   if (window.Android && typeof window.Android.saveLines === "function") window.Android.saveLines(JSON.stringify(lines));
 }
-document.querySelector("#save-nav").addEventListener("click", saveLines);
-document.querySelector("#roll-nav").addEventListener("click", () => window.location.href = "index.html");
+document.querySelector("#widget-nav").addEventListener("click", () => window.location.href = "index.html");
 render();
