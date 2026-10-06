@@ -31,11 +31,18 @@ tasks.register("stageWidgetAssets", Copy) {
     rename("widget.js", "widget.js")
 }
 
+tasks.register("stageDashboardAssets", Copy) {
+    from("$projectRoot/android") {
+        include "dashboard.html", "dashboard.js"
+    }
+    into("$projectRoot/android/generated-assets")
+}
+
 tasks.register("stageImageAssets", Copy) {
     from("$projectRoot/disco-backend/assets")
     into("$projectRoot/android/generated-assets/assets")
 }
 
 tasks.named("preBuild") {
-    dependsOn("stageWidgetAssets", "stageImageAssets")
+    dependsOn("stageWidgetAssets", "stageImageAssets", "stageDashboardAssets")
 }

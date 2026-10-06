@@ -47,8 +47,12 @@ The exact importer directory is OS/Hub-version specific; do not guess it.
 This repository now also contains a generic Android APK wrapper in
 [`android/`](./android). It packages the widget UI and image assets locally,
 so the installed APK can roll without a Go server or `localhost` connection.
-It is an installable companion app; Nothing-specific launcher/widget-provider
-APIs are separate from this generic APK shell.
+It includes an editable dashboard and a standard Android home-screen widget
+provider. After installing, open **Disco Check** to edit every line. Then
+long-press an empty area of the Nothing Launcher home screen, choose
+**Widgets**, find **Disco Check**, and drag it onto the home screen. Tap the
+widget to roll. If it does not appear immediately, restart Nothing Launcher
+or reboot the phone once after installing the APK.
 
 ### Build on GitHub
 
@@ -87,3 +91,5 @@ adb install -r disco-check-v1.0.0.apk
 
 The APK is currently unsigned debug output. A public release should use a
 private signing key stored in GitHub Actions secrets before distributing it.
+The widget uses standard Android `AppWidgetProvider` APIs and does not require
+the Community Widget Hub importer.

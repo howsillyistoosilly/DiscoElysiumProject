@@ -24,7 +24,7 @@ public final class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         webView.addJavascriptInterface(new RollBridge(), "Android");
-        webView.loadUrl("file:///android_asset/index.html");
+        webView.loadUrl("file:///android_asset/dashboard.html");
         setContentView(webView);
     }
 
