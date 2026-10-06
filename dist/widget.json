@@ -1,0 +1,17 @@
+{
+  "id": "disco-elysium-check",
+  "name": "Disco Check",
+  "author": "YourName",
+  "version": "1.0.0",
+  "description": "2d6 Skill Check with iconic Disco Elysium quotes",
+  "dimensions": {
+    "supported": [
+      "3x2",
+      "2x2",
+      "4x2"
+    ],
+    "default": "2x2"
+  },
+  "interactive": true,
+  "entry": "dist/widget.js"
+}

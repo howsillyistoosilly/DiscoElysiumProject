@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Disco Check Widget Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; font-family: "Libre Baskerville", Georgia, serif; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      color: #f5f5f5;
+      background: #090909 radial-gradient(#2d2d2d 1px, transparent 1px) 0 0 / 12px 12px;
+    }
+    main {
+      width: 320px;
+      height: 320px;
+      border: 1px solid #5a5a5a;
+      border-radius: 22px;
+      overflow: hidden;
+      position: relative;
+      background: transparent;
+      box-shadow: 0 20px 50px #000b;
+      cursor: pointer;
+      user-select: none;
+      transition: transform .15s ease, box-shadow .15s ease;
+      border-color: var(--accent, #5a5a5a);
+    }
+    main:hover, main:focus-visible { transform: translateY(-2px); box-shadow: 0 24px 55px #000c; }
+    main:active { transform: translateY(1px); box-shadow: 0 14px 35px #000a; }
+    .portrait {
+      position: absolute;
+      inset: 0;
+      background: center/cover no-repeat #111;
+    }
+    .content {
+      position: absolute;
+      inset: auto 0 0;
+      height: var(--content-height, 132px);
+      min-height: 0;
+      padding: 34px 18px 10px;
+      box-sizing: border-box;
+      background: linear-gradient(
+        to bottom,
+        #1110 0%,
+        #111a var(--gradient-start, 35%),
+        #111e var(--gradient-mid, 72%),
+        #111 100%
+      );
+    }
+    .topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 42px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      z-index: 3;
+    }
+    .header {
+      color: #d0d0d0;
+      flex: 0 1 62%;
+      width: auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 9px !important;
+      font-weight: 400;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-shadow: 0 1px 4px #000;
+      opacity: .48;
+      mix-blend-mode: screen;
+      transition: color .2s ease, opacity .2s ease;
+    }
+    .header.critical { color: #d71921; opacity: .68; }
+    .quote {
+      margin: 0;
+      height: 100%;
+      overflow-y: auto;
+      overflow-wrap: anywhere;
+      padding: 0 48px 8px 0;
+      color: #c8c8c8;
+      font-size: var(--quote-size, .82rem);
+      font-weight: 400;
+      line-height: 1.45;
+      scrollbar-width: thin;
+      scrollbar-color: #7776 transparent;
+    }
+    .quote::-webkit-scrollbar { width: 4px; }
+    .quote::-webkit-scrollbar-thumb { background: #7776; border-radius: 999px; }
+    .dice {
+      position: relative;
+      top: auto;
+      margin-left: auto;
+      display: flex;
+      gap: 4px;
+      z-index: 1;
+    }
+    .dice img {
+      width: 22px;
+      height: 22px;
+      padding: 3px;
+      image-rendering: pixelated;
+      background: #f5f5f5;
+      filter: invert(1);
+      border: 0;
+      opacity: .72;
+    }
+    .photo-toggle {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 2;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--accent, #fff8);
+      border-radius: 999px;
+      padding: 0;
+      color: #fff;
+      background: #09090999;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+    .photo-toggle:hover { background: #fff; color: #111; }
+    .photo-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    main.photo-only .content { display: none; }
+    .roll-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      opacity: 0;
+      overflow: hidden;
+    }
+    .roll-flash::before {
+      display: none;
+    }
+    .roll-flash::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: #58c87830;
+      box-shadow: inset 0 0 44px #58c87866;
+    }
+    .roll-flash.flash { opacity: 1; }
+    .roll-flash.flash::after { animation: green-breathe .95s ease-in-out; }
+    @keyframes green-breathe {
+      0%, 100% { opacity: .18; }
+      45% { opacity: .7; }
+    }
+    main.montage .topbar,
+    main.montage .content { visibility: hidden; }
+  </style>
+</head>
+<body>
+  <main id="widget" tabindex="0" role="button" aria-label="Roll Disco Check">
+    <div id="roll-flash" class="roll-flash"></div>
+    <div class="topbar">
+      <span id="header">READY</span>
+      <div id="dice" class="dice"></div>
+    </div>
+    <div id="portrait" class="portrait">
+    </div>
+    <div class="content">
+      <div id="quote" class="quote">Tap anywhere to run the check.</div>
+      <button id="photo-toggle" class="photo-toggle" type="button" aria-label="View photo" title="View photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="15" rx="2"></rect>
+          <circle cx="8.5" cy="10" r="1.5"></circle>
+          <path d="m4 17 4.5-4 3.5 3 2.5-2 5.5 5"></path>
+        </svg>
+      </button>
+    </div>
+  </main>
+  <script src="/widget.js"></script>
+</body>
+</html>
