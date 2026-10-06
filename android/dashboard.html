@@ -2,30 +2,95 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Disco Check Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090909">
+  <title>Disco Check</title>
   <style>
-    :root { color-scheme: dark; font-family: Georgia, serif; }
-    body { margin: 0; padding: 20px 16px 36px; color: #f3f3f3; background: #090909; }
-    header { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-    h1 { margin: 0; font-size: 22px; letter-spacing: .08em; }
-    p { color: #999; font-size: 12px; line-height: 1.4; }
-    button { border: 1px solid #8170b2; border-radius: 999px; padding: 9px 13px; color: #fff; background: #201b2e; }
-    #status { min-height: 16px; color: #9cdda9; font-size: 12px; }
-    .line { margin: 10px 0; padding: 12px; border: 1px solid #333; border-radius: 14px; background: #151515; }
-    label { display: block; margin-bottom: 7px; color: #b7a6e5; font-size: 10px; letter-spacing: .1em; }
-    input, textarea { box-sizing: border-box; width: 100%; border: 1px solid #383838; border-radius: 8px; padding: 9px; color: #eee; background: #0e0e0e; font: inherit; }
-    textarea { min-height: 76px; resize: vertical; line-height: 1.4; }
-    .line + .line { margin-top: 8px; }
+    :root {
+      color-scheme: dark;
+      font-family: "Libre Baskerville", Georgia, serif;
+      --bg: #090909;
+      --panel: #111;
+      --line: #303030;
+      --muted: #999;
+      --text: #f4f4f4;
+      --accent: #d71921;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--text); background: var(--bg); }
+    .app { max-width: 520px; min-height: 100vh; margin: auto; padding: 28px 18px 86px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    h1 { margin: 0; font-size: 31px; font-weight: 400; letter-spacing: -.06em; }
+    .more { border: 0; padding: 4px 8px; color: var(--text); background: transparent; font: 24px Georgia, serif; }
+    .search { display: flex; align-items: center; gap: 9px; margin-bottom: 22px; padding: 10px 12px; border-radius: 10px; color: var(--muted); background: #171717; }
+    .search svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .search input { min-width: 0; flex: 1; border: 0; outline: 0; color: var(--text); background: transparent; font: 13px Georgia, serif; }
+    .skill-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px 12px; }
+    .skill { position: relative; aspect-ratio: 1; min-width: 0; overflow: hidden; border: 0; border-radius: 50%; padding: 0; color: #fff; background: #252525; box-shadow: 0 4px 14px #0008; }
+    .skill::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#0001, #000b); }
+    .skill img { width: 100%; height: 100%; object-fit: cover; }
+    .skill-name { position: absolute; right: 7px; bottom: 9px; left: 7px; overflow: hidden; text-shadow: 0 1px 5px #000; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; }
+    .skill-add { display: grid; place-items: center; border: 1px dashed #777; color: #bbb; background: #171717; box-shadow: none; font-size: 28px; }
+    .skill-add::before { display: none; }
+    .detail { display: none; }
+    .detail.active { display: block; }
+    .grid-view.hidden { display: none; }
+    .back { border: 0; padding: 0; color: var(--muted); background: transparent; font: 13px Georgia, serif; }
+    .detail-hero { position: relative; height: 205px; margin: 0 -18px 19px; overflow: hidden; background: #171717; }
+    .detail-hero img { width: 100%; height: 100%; object-fit: cover; opacity: .76; }
+    .detail-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(#09090922 15%, #090909e8 100%); }
+    .detail-title { position: absolute; right: 18px; bottom: 18px; left: 18px; z-index: 1; margin: 0; color: #fff; font-size: 25px; font-weight: 400; letter-spacing: -.04em; text-shadow: 0 2px 8px #000; }
+    .detail-line { position: relative; margin: 0 0 10px; padding: 14px 38px 14px 15px; border-left: 2px solid var(--accent); border-radius: 3px 12px 12px 3px; color: #ddd; background: #151515; font-size: 13px; line-height: 1.5; }
+    .detail-line button { position: absolute; top: 9px; right: 9px; border: 0; color: #888; background: transparent; font-size: 16px; }
+    .add-line { width: 100%; margin-top: 5px; border: 1px dashed #666; border-radius: 12px; padding: 13px; color: #ccc; background: transparent; font: 12px Georgia, serif; }
+    .screen-actions { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .empty { padding: 25px 4px; color: var(--muted); font-size: 13px; }
+    nav { position: fixed; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); }
+    .nav-inner { display: flex; justify-content: space-around; width: min(100%, 390px); padding: 11px 16px; border-radius: 24px; background: #1b1b1b; box-shadow: 0 4px 22px #000b; }
+    .nav-item { display: grid; place-items: center; gap: 3px; border: 0; color: #aaa; background: transparent; font: 9px Georgia, serif; }
+    .nav-item.active { color: #d71921; }
+    .nav-item svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    dialog { width: min(92vw, 480px); border: 1px solid #444; border-radius: 18px; padding: 20px; color: var(--text); background: #151515; }
+    dialog::backdrop { background: #000b; backdrop-filter: blur(4px); }
+    dialog h2 { margin: 0 0 16px; font-size: 19px; font-weight: 400; }
+    label { display: block; margin: 13px 0 6px; color: #b7a6e5; font-size: 10px; letter-spacing: .08em; }
+    input, textarea { width: 100%; border: 1px solid #3b3b3b; border-radius: 8px; padding: 10px; outline: 0; color: var(--text); background: #0c0c0c; font: 14px Georgia, serif; }
+    textarea { min-height: 125px; resize: vertical; line-height: 1.45; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 16px; }
+    .dialog-actions button { border: 1px solid #555; border-radius: 999px; padding: 9px 14px; color: var(--text); background: transparent; }
+    .dialog-actions .save { border-color: var(--accent); background: var(--accent); }
   </style>
 </head>
 <body>
-  <header>
-    <div><h1>DISCO CHECK</h1><p>Edit the lines used by your dashboard. Changes are saved on this phone.</p></div>
-    <button id="save" type="button">SAVE</button>
-  </header>
-  <div id="status" role="status"></div>
-  <main id="lines"></main>
+  <main class="app">
+    <section id="grid-view" class="grid-view">
+      <header class="topbar"><h1>Skills</h1><button class="more" aria-label="About">⋮</button></header>
+      <label class="search" aria-label="Search skills">
+      <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg>
+        <input id="search" type="search" placeholder="Search skills">
+      </label>
+      <section id="lines" class="skill-grid" aria-live="polite"></section>
+    </section>
+    <section id="detail" class="detail">
+      <div class="screen-actions"><button id="back" class="back">‹ All skills</button><button class="more" aria-label="More">⋮</button></div>
+      <div class="detail-hero"><img id="detail-image" alt=""><h1 id="detail-title" class="detail-title"></h1></div>
+      <section id="detail-lines"></section>
+      <button id="add-line" class="add-line" type="button">+ Add line</button>
+    </section>
+  </main>
+  <nav><div class="nav-inner">
+    <button class="nav-item active"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16l3-4 3 2 5-7"></path></svg>Lines</button>
+    <button class="nav-item" id="roll-nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><circle cx="9" cy="9" r="1"></circle><circle cx="15" cy="15" r="1"></circle></svg>Roll</button>
+    <button class="nav-item" id="save-nav"><svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5zM8 4v6h8V4M8 16h8"></path></svg>Save</button>
+  </div></nav>
+  <dialog id="editor">
+    <form method="dialog">
+      <h2 id="editor-heading">Edit line</h2>
+      <label for="title">TITLE</label><input id="title" required>
+      <label for="text">QUOTE</label><textarea id="text" required></textarea>
+      <div class="dialog-actions"><button id="delete-line" type="button">Delete</button><button value="cancel">Cancel</button><button class="save" id="save-line" value="default">Save</button></div>
+    </form>
+  </dialog>
   <script src="dashboard.js"></script>
 </body>
 </html>
