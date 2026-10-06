@@ -16,9 +16,25 @@ android {
         versionName "1.0.0"
     }
 
+    signingConfigs {
+        release {
+            storeFile file("$rootDir/release.keystore")
+            storePassword System.getenv("DISCO_KEYSTORE_PASSWORD") ?: "disco-check"
+            keyAlias System.getenv("DISCO_KEY_ALIAS") ?: "disco-check"
+            keyPassword System.getenv("DISCO_KEY_PASSWORD") ?: "disco-check"
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
     sourceSets {
         main {
-            assets.srcDir("$projectRoot/android/generated-assets")
+            assets.srcDir("$projectRoot/android/app/src/main/assets")
         }
     }
 }
@@ -27,7 +43,7 @@ tasks.register("stageWidgetAssets", Copy) {
     from("$projectRoot/web") {
         include "index.html", "widget.js"
     }
-    into("$projectRoot/android/generated-assets")
+    into("$projectRoot/android/app/src/main/assets")
     rename("widget.js", "widget.js")
 }
 
@@ -35,12 +51,12 @@ tasks.register("stageDashboardAssets", Copy) {
     from("$projectRoot/android") {
         include "dashboard.html", "dashboard.js"
     }
-    into("$projectRoot/android/generated-assets")
+    into("$projectRoot/android/app/src/main/assets")
 }
 
 tasks.register("stageImageAssets", Copy) {
     from("$projectRoot/disco-backend/assets")
-    into("$projectRoot/android/generated-assets/assets")
+    into("$projectRoot/android/app/src/main/assets/assets")
 }
 
 tasks.named("preBuild") {

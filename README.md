@@ -13,6 +13,9 @@ go run ./disco-backend
 
 Open <http://localhost:8080>. The local playground uses the same `/api/roll`
 endpoint and asset URLs as the widget. `GET /api/health` checks reachability.
+Open <http://localhost:8080/dashboard> to preview and edit all dashboard lines
+in a browser. Browser edits are local to that browser; APK edits are stored on
+the phone and are shared with its home-screen widget.
 
 Build the sideloadable bundle:
 
@@ -89,7 +92,8 @@ For USB installation after downloading:
 adb install -r disco-check-v1.0.0.apk
 ```
 
-The APK is currently unsigned debug output. A public release should use a
-private signing key stored in GitHub Actions secrets before distributing it.
+GitHub releases are signed with a temporary CI release key so Android can
+install them. A public production release should replace this with a private
+signing key stored in GitHub Actions secrets.
 The widget uses standard Android `AppWidgetProvider` APIs and does not require
 the Community Widget Hub importer.

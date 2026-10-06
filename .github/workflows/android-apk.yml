@@ -19,11 +19,23 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build debug APK
+      - name: Create release signing key
         working-directory: android
-        run: gradle assembleDebug
+        run: |
+          keytool -genkeypair -v \
+            -keystore release.keystore \
+            -storepass disco-check \
+            -keypass disco-check \
+            -alias disco-check \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Disco Check, OU=Disco Check, O=Disco Check, L=Unknown, S=Unknown, C=US"
+      - name: Build signed APK
+        working-directory: android
+        run: gradle assembleRelease
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk "disco-check-${GITHUB_REF_NAME}.apk"
+        run: cp android/app/build/outputs/apk/release/app-release.apk "disco-check-${GITHUB_REF_NAME}.apk"
       - uses: actions/upload-artifact@v4
         with:
           name: disco-check-${{ github.ref_name }}-apk

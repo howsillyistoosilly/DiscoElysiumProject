@@ -44,6 +44,12 @@ func main() {
 
 	fs := http.FileServer(http.Dir(assetDir))
 	http.Handle("/assets/", http.StripPrefix("/assets/", fs))
+	http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "android/dashboard.html")
+	})
+	http.HandleFunc("/dashboard.js", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "android/dashboard.js")
+	})
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
 
 	port := ":8080"
