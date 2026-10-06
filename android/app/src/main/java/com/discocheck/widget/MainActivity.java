@@ -8,6 +8,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.util.Random;
 
@@ -49,6 +50,20 @@ public final class MainActivity extends Activity {
                 return "{}";
             }
             return result.toString();
+        }
+
+        @JavascriptInterface
+        public void saveLines(String json) {
+            getSharedPreferences("disco-check", MODE_PRIVATE)
+                    .edit()
+                    .putString("lines", json)
+                    .apply();
+        }
+
+        @JavascriptInterface
+        public String loadLines() {
+            return getSharedPreferences("disco-check", MODE_PRIVATE)
+                    .getString("lines", "[]");
         }
     }
 }

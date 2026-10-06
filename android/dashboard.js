@@ -26,7 +26,10 @@ const defaults = [
 ];
 
 const storageKey = "disco-check-lines";
-let lines = JSON.parse(localStorage.getItem(storageKey) || "null") || defaults.map(([title, quote]) => ({ title, quote }));
+const nativeLines = window.Android && typeof window.Android.loadLines === "function"
+  ? JSON.parse(window.Android.loadLines())
+  : [];
+let lines = nativeLines.length ? nativeLines : (JSON.parse(localStorage.getItem(storageKey) || "null") || defaults.map(([title, quote]) => ({ title, quote })));
 const container = document.querySelector("#lines");
 const status = document.querySelector("#status");
 
@@ -50,6 +53,9 @@ function escapeHtml(value) {
 
 document.querySelector("#save").addEventListener("click", () => {
   localStorage.setItem(storageKey, JSON.stringify(lines));
+  if (window.Android && typeof window.Android.saveLines === "function") {
+    window.Android.saveLines(JSON.stringify(lines));
+  }
   status.textContent = "Saved locally.";
   setTimeout(() => { status.textContent = ""; }, 1800);
 });
