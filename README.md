@@ -93,7 +93,10 @@ adb install -r disco-check-v1.0.0.apk
 ```
 
 GitHub releases are signed with a temporary CI release key so Android can
-install them. A public production release should replace this with a private
-signing key stored in GitHub Actions secrets.
+install them. To update an existing install without uninstalling it, add a
+single persistent keystore to GitHub Actions as `DISCO_KEYSTORE_BASE64`, plus
+`DISCO_KEYSTORE_PASSWORD`, `DISCO_KEY_ALIAS`, and `DISCO_KEY_PASSWORD`.
+Without those secrets, a fresh temporary key is generated for each build and
+Android requires the old app to be uninstalled first.
 The widget uses standard Android `AppWidgetProvider` APIs and does not require
 the Community Widget Hub importer.
