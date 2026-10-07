@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Disco Check — Widget Emulator</title>
+  <meta name="description" content="Interactive emulator for the Disco Elysium Skill Check widget.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #05050a; --surface: #0e0e18; --border: #272740;
+      --text: #e2e2f0; --muted: #6a6a8a; --accent: #5a5a5a;
+      --red: #d71921; --purple: #8170b2;
+      color-scheme: dark;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 10%, #1a1040 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%, #0a1a2a 0%, transparent 55%),
+        radial-gradient(#1e1e2e 1px, transparent 1px);
+      background-size: auto, auto, 18px 18px;
+      color: var(--text);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 32px 16px 64px; gap: 0;
+    }
+    .site-header { text-align: center; margin-bottom: 40px; }
+    .site-header .eyebrow {
+      font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px;
+    }
+    .site-header h1 {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: clamp(1.6rem, 5vw, 2.6rem); font-weight: 700;
+      background: linear-gradient(135deg, #e8d8b0 0%, #c4a35a 40%, #8170b2 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.1; margin-bottom: 10px;
+    }
+    .site-header p { color: var(--muted); font-size: .85rem; max-width: 380px; line-height: 1.6; }
+    .stage {
+      display: flex; gap: 40px; align-items: flex-start;
+      flex-wrap: wrap; justify-content: center; width: 100%; max-width: 900px;
+    }
+    .device { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .device-label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+    .device-shell {
+      background: #111118; border: 1.5px solid #2a2a3a; border-radius: 36px;
+      padding: 20px 16px;
+      box-shadow: 0 0 0 1px #0006, 0 30px 80px #000c, inset 0 1px 0 #ffffff10;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+    }
+    .device-pill { width: 48px; height: 5px; background: #2a2a3a; border-radius: 999px; }
+    .device-home-btn {
+      width: 36px; height: 36px; border: 1.5px solid #2a2a3a;
+      border-radius: 50%; background: #111118;
+    }
+    #widget-frame {
+      width: 300px; height: 300px; border-radius: 24px; overflow: hidden;
+      position: relative; border: 1px solid var(--accent);
+      box-shadow: 0 12px 40px #000a; cursor: pointer; user-select: none;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .4s ease;
+      background: #111;
+    }
+    #widget-frame:hover  { transform: translateY(-2px); box-shadow: 0 18px 48px #000c; }
+    #widget-frame:active { transform: translateY(1px);  box-shadow: 0 8px 20px #0008; }
+    #portrait {
+      position: absolute; inset: 0;
+      background: center / cover no-repeat #0d0d14;
+    }
+    .topbar {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 42px; padding: 0 14px;
+      display: flex; align-items: center; z-index: 3;
+    }
+    #header {
+      color: #d0d0d0; flex: 0 1 62%; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+      font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 500;
+      letter-spacing: .08em; text-transform: uppercase;
+      text-shadow: 0 1px 4px #000; opacity: .5; mix-blend-mode: screen;
+      transition: color .3s ease, opacity .3s ease;
+    }
+    #header.critical { color: var(--red); opacity: .72; }
+    #dice { margin-left: auto; display: flex; gap: 4px; }
+    #dice img {
+      width: 22px; height: 22px; padding: 3px;
+      image-rendering: pixelated; background: #f5f5f5;
+      filter: invert(1); opacity: .72; border: 0;
+    }
+    #content-panel {
+      position: absolute; inset: auto 0 0;
+      height: var(--content-height, 132px); min-height: 0;
+      padding: 34px 18px 10px;
+      background: linear-gradient(
+        to bottom,
+        #1110 0%, #111a var(--gradient-start, 35%),
+        #111e var(--gradient-mid, 72%), #111 100%
+      );
+      transition: height .3s ease;
+    }
+    #quote {
+      margin: 0; height: 100%; overflow-y: auto; overflow-wrap: anywhere;
+      padding: 0 36px 8px 0; color: #c8c8c8;
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: var(--quote-size, .82rem); font-weight: 400; line-height: 1.5;
+      scrollbar-width: thin; scrollbar-color: #7776 transparent;
+    }
+    #quote::-webkit-scrollbar { width: 3px; }
+    #quote::-webkit-scrollbar-thumb { background: #7776; border-radius: 999px; }
+    #photo-toggle {
+      position: absolute; right: 12px; bottom: 12px; z-index: 2;
+      width: 30px; height: 30px; border: 1px solid var(--accent, #fff8);
+      border-radius: 50%; padding: 0; color: #fff;
+      background: #09090999; backdrop-filter: blur(8px);
+      cursor: pointer; display: grid; place-items: center;
+      transition: background .15s, color .15s, border-color .4s;
+    }
+    #photo-toggle:hover { background: #fff; color: #111; }
+    #photo-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    #widget-frame.photo-only #content-panel { display: none; }
+    #roll-flash {
+      position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0;
+    }
+    #roll-flash::after {
+      content: ""; position: absolute; inset: 0;
+      background: #58c87830; box-shadow: inset 0 0 44px #58c87866;
+    }
+    #roll-flash.flash { opacity: 1; }
+    #roll-flash.flash::after { animation: green-breathe .95s ease-in-out; }
+    @keyframes green-breathe { 0%, 100% { opacity: .18; } 45% { opacity: .7; } }
+    #widget-frame.montage .topbar,
+    #widget-frame.montage #content-panel { visibility: hidden; }
+    .controls {
+      flex: 1 1 280px; min-width: 260px; max-width: 360px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+    .panel-title {
+      font-size: 11px; font-weight: 600; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+    }
+    .scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .scenario-btn {
+      padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border);
+      background: transparent; color: var(--text);
+      font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
+      cursor: pointer; text-align: left;
+      transition: background .15s, border-color .15s, transform .1s;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .scenario-btn:hover  { background: #ffffff08; border-color: #404060; transform: translateY(-1px); }
+    .scenario-btn:active { transform: translateY(0); }
+    .scenario-btn .s-label { color: var(--muted); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+    .scenario-btn.crit-fail  { border-color: #d7192140; }
+    .scenario-btn.crit-fail:hover  { border-color: #d71921; background: #d7192112; }
+    .scenario-btn.crit-success { border-color: #8170b240; }
+    .scenario-btn.crit-success:hover { border-color: #8170b2; background: #8170b212; }
+    .scenario-btn.random-btn {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, #1a153a, #0d1a22); border-color: #3a3060;
+      justify-content: center; align-items: center; flex-direction: row; gap: 8px; padding: 12px;
+    }
+    .scenario-btn.random-btn:hover { border-color: #6050a0; background: linear-gradient(135deg, #221a4a, #102030); }
+    .scenario-btn.random-btn .icon { font-size: 1.1rem; }
+    #roll-log {
+      display: flex; flex-direction: column; gap: 6px;
+      max-height: 220px; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: #2a2a3a transparent;
+    }
+    .log-entry {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 10px; border-radius: 8px;
+      background: #ffffff06; border: 1px solid transparent;
+      animation: fadeSlide .25s ease; font-size: 11.5px;
+    }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .log-entry.crit-f { border-color: #d7192125; }
+    .log-entry.crit-s { border-color: #8170b225; }
+    .log-dice { font-size: 1rem; min-width: 18px; }
+    .log-meta { display: flex; flex-direction: column; gap: 2px; }
+    .log-skill { font-weight: 600; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
+    .log-total { color: var(--muted); font-size: 10px; }
+    .log-entry.crit-f .log-skill { color: var(--red); }
+    .log-entry.crit-s .log-skill { color: var(--purple); }
+    .log-empty { color: var(--muted); font-size: 12px; text-align: center; padding: 16px 0; }
+    .stats-row { display: flex; gap: 8px; }
+    .stat-box {
+      flex: 1; background: #ffffff06; border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px; text-align: center;
+    }
+    .stat-num { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stat-lbl { font-size: 9px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: 2px; }
+    .stat-num.red    { color: var(--red); }
+    .stat-num.purple { color: var(--purple); }
+    .stat-num.green  { color: #58c878; }
+    .site-footer { margin-top: 56px; color: var(--muted); font-size: 11px; text-align: center; opacity: .6; }
+  </style>
+</head>
+<body>
+<header class="site-header">
+  <p class="eyebrow">Widget Emulator</p>
+  <h1>Disco Check</h1>
+  <p>Test the skill-check widget without a running backend.<br>All rolls are simulated client-side.</p>
+</header>
+<main class="stage">
+  <section class="device" aria-label="Widget preview">
+    <span class="device-label">2 x 2 Widget</span>
+    <div class="device-shell">
+      <div class="device-pill"></div>
+      <div id="widget-frame" tabindex="0" role="button" aria-label="Roll Disco Check">
+        <div id="roll-flash"></div>
+        <div class="topbar">
+          <span id="header">READY</span>
+          <div id="dice"></div>
+        </div>
+        <div id="portrait"></div>
+        <div id="content-panel">
+          <div id="quote">Tap anywhere to run the check.</div>
+          <button id="photo-toggle" type="button" aria-label="View photo" title="View photo">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="15" rx="2"></rect>
+              <circle cx="8.5" cy="10" r="1.5"></circle>
+              <path d="m4 17 4.5-4 3.5 3 2.5-2 5.5 5"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="device-home-btn" aria-hidden="true"></div>
+    </div>
+  </section>
+  <aside class="controls" aria-label="Emulator controls">
+    <div class="panel">
+      <p class="panel-title">Roll scenarios</p>
+      <div class="scenario-grid">
+        <button class="scenario-btn random-btn" id="btn-random">
+          <span class="icon">&#x1F3B2;</span><span>Random roll</span>
+        </button>
+        <button class="scenario-btn crit-fail" data-scenario="crit_fail">
+          <span class="s-label">Force</span>Critical Failure
+        </button>
+        <button class="scenario-btn crit-success" data-scenario="crit_success">
+          <span class="s-label">Force</span>Critical Success
+        </button>
+        <button class="scenario-btn" data-scenario="intellect">
+          <span class="s-label">Skill group</span>Intellect
+        </button>
+        <button class="scenario-btn" data-scenario="psyche">
+          <span class="s-label">Skill group</span>Psyche
+        </button>
+        <button class="scenario-btn" data-scenario="physique">
+          <span class="s-label">Skill group</span>Physique
+        </button>
+        <button class="scenario-btn" data-scenario="motorics">
+          <span class="s-label">Skill group</span>Motorics
+        </button>
+        <button class="scenario-btn" data-scenario="long_quote">
+          <span class="s-label">Edge case</span>Long quote
+        </button>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="panel-title">Session stats</p>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num" id="stat-total">0</div><div class="stat-lbl">Rolls</div></div>
+        <div class="stat-box"><div class="stat-num red" id="stat-cf">0</div><div class="stat-lbl">Crit Fail</div></div>
+        <div class="stat-box"><div class="stat-num purple" id="stat-cs">0</div><div class="stat-lbl">Crit Win</div></div>
+        <div class="stat-box"><div class="stat-num green" id="stat-avg">--</div><div class="stat-lbl">Avg</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="panel-title">Roll history</p>
+      <div id="roll-log"><p class="log-empty">No rolls yet.</p></div>
+    </div>
+  </aside>
+</main>
+<footer class="site-footer">Disco Elysium Widget Emulator &middot; All data mocked in-browser</footer>
+<script>
+const SKILLS = [
+  { name:"LOGIC",              quote:"Do it for the picture puzzle. Put it all together. Solve the world. One conversation at a time.",                                                                                          assetPath:"Intellect/Logic.jpg",               group:"intellect" },
+  { name:"ENCYCLOPEDIA",       quote:"Your mangled brain would like you to know there is a boxer called Contact Mike.",                                                                                                          assetPath:"Intellect/Encyclopedia.jpg",        group:"intellect" },
+  { name:"RHETORIC",           quote:"Yes! Abject failure. Total, irreversible defeat on all fronts! Absolutely vanquished, beaten, curb-stomped and pissed on -- until *you* came along! You alone, against every living thing, against every human alive: eight hundred trillion real in the hands of an *impossibly* well organized ruling class. You are The Last Communist. Now get to work, comrade.", assetPath:"Intellect/Rhetoric.jpg", group:"intellect" },
+  { name:"DRAMA",              quote:"Everyone knows you can't trust artists. They're nearly as bad as clowns.",                                                                                                                 assetPath:"Intellect/Drama.jpg",               group:"intellect" },
+  { name:"CONCEPTUALIZATION",  quote:"The world's most precious material, reserved for those she lets close enough to feel it. You are stealing a touch. It's not yours to take.",                                               assetPath:"Intellect/Conceptualization.jpg",   group:"intellect" },
+  { name:"VISUAL CALCULUS",    quote:"The man does not know the bullet has entered his brain. He never will. Death comes faster than the realization.",                                                                          assetPath:"Intellect/Visual_Calculus.jpg",     group:"intellect" },
+  { name:"VOLITION",           quote:"No. This is somewhere to be. This is all you have, but it's still something. Streets and sodium lights. The sky, the world. You're still alive.",                                         assetPath:"Psyche/Volition.jpg",               group:"psyche"    },
+  { name:"INLAND EMPIRE",      quote:"A tremendous loneliness comes over you. Everybody in the world is doing something without you.",                                                                                           assetPath:"Psyche/Inland_Empire.jpg",          group:"psyche"    },
+  { name:"EMPATHY",            quote:"This is a very, very sad man who has just seen something that's made him forget his sadness.",                                                                                             assetPath:"Psyche/Empathy.jpg",                group:"psyche"    },
+  { name:"AUTHORITY",          quote:"And you? Is it an honour to work with you? Don't ask him, ask yourself.",                                                                                                                 assetPath:"Psyche/Authority.jpg",              group:"psyche"    },
+  { name:"SUGGESTION",         quote:"This was not about failure or success. This was always going to be horror. I should not have suggested it, and you should not have listened to me.",                                      assetPath:"Psyche/Suggestion.jpg",             group:"psyche"    },
+  { name:"ESPRIT DE CORPS",    quote:"If an assault were launched on this building right now -- if the windows came crashing down and the whole world descended upon you -- this man would hurl himself in death's way to save you.", assetPath:"Psyche/Espirit_De_Corps.jpg", group:"psyche" },
+  { name:"ENDURANCE",          quote:"Think about the seagull's story. It's one of endurance and adaptation. The seaside was paradise once. Then their paradise became shit city. And what did they do? They became urban survivors! Eating burgers out of trash cans! No time for sentimental bullshit. Just like you.", assetPath:"Physique/Endurance.jpg", group:"physique" },
+  { name:"PAIN THRESHOLD",     quote:"There's tenderness in the carabineer's look. Tenderness that's curdled into pain or something darker. Even worse, a love aborted and smothered, stamped beneath his brilliant boot heel.", assetPath:"Physique/Pain_Threshold.jpg",       group:"physique" },
+  { name:"PHYSICAL INSTRUMENT",quote:"Cold and heavy -- like truth.",                                                                                                                                                           assetPath:"Physique/Physical_Instrument.jpg",  group:"physique" },
+  { name:"ELECTROCHEMISTRY",   quote:"The funk soul brother at the back of his head has gone dark. Forever.",                                                                                                                    assetPath:"Physique/Electrochemistry.jpg",     group:"physique" },
+  { name:"SHIVERS",            quote:"I am a fragment of the world spirit, the genius loci of Revachol. I've seen you, I've seen you! I've seen you with her -- and I've seen you without her. I've seen you on the crescent of the hill.", assetPath:"Physique/Shivers.jpg", group:"physique" },
+  { name:"HALF LIGHT",         quote:"He whispers with such predatory hunger it borders on longing.",                                                                                                                           assetPath:"Physique/Half_Light.jpg",           group:"physique" },
+  { name:"HAND/EYE COORDINATION",quote:"A gun is a tool for putting holes into things far away. Sometimes those things are human heads. Keep your fingers steady.",                                                             assetPath:"Motorics/Hand_Eye_Coordination.jpg",group:"motorics" },
+  { name:"PERCEPTION",         quote:"Listen closely. The silence here is not empty; it is crowded with things people decided not to say.",                                                                                     assetPath:"Motorics/Perception.jpg",           group:"motorics" },
+  { name:"REACTION SPEED",     quote:"The second ticks by like a falling guillotine blade. Move, or be severed.",                                                                                                               assetPath:"Motorics/Reaction_Speed.jpg",       group:"motorics" },
+  { name:"SAVOIR FAIRE",       quote:"Style is not an accident. It is a calculated declaration of war against the mundane.",                                                                                                    assetPath:"Motorics/Savoir_Faire.jpg",         group:"motorics" },
+  { name:"INTERFACING",        quote:"The needle drops into the groove. Friction, vibration, amplification. You understand machines because they are the only things that tell the simple truth.",                              assetPath:"Motorics/Interfacing.jpg",          group:"motorics" },
+  { name:"COMPOSURE",          quote:"Straighten your collar. Swallow the bile. No one can know that your heart is coming apart at the seams.",                                                                                assetPath:"Motorics/Composure.jpg",            group:"motorics" },
+];
+
+function accentForPath(p) {
+  if (p.startsWith("Intellect/")) return "#C4A35A";
+  if (p.startsWith("Psyche/"))    return "#8170B2";
+  if (p.startsWith("Physique/"))  return "#A84F63";
+  if (p.startsWith("Motorics/"))  return "#6C9B9A";
+  return "#8A8A8A";
+}
+
+function rollDie() { return Math.floor(Math.random() * 6) + 1; }
+
+function buildRoll(d1, d2, skill) {
+  return {
+    die1: d1, die2: d2, total: d1 + d2,
+    die1_asset: "dice/die" + d1 + ".png",
+    die2_asset: "dice/die" + d2 + ".png",
+    header: skill.name, quote: skill.quote,
+    asset_path: skill.assetPath, is_critical: false,
+    accent_color: accentForPath(skill.assetPath),
+  };
+}
+
+let nextScenario = null;
+
+function mockRoll() {
+  var sc = nextScenario; nextScenario = null;
+  if (sc === "crit_fail") {
+    return { die1:1,die2:1,total:2, die1_asset:"dice/die1.png",die2_asset:"dice/die1.png",
+      header:"CRITICAL FAILURE", quote:"Two ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.",
+      asset_path:"Physique/Half_Light.jpg", is_critical:true, accent_color:"#D71921" };
+  }
+  if (sc === "crit_success") {
+    return { die1:6,die2:6,total:12, die1_asset:"dice/die6.png",die2_asset:"dice/die6.png",
+      header:"CRITICAL SUCCESS", quote:"Double sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.",
+      asset_path:"Psyche/Volition.jpg", is_critical:true, accent_color:"#7D6BB3" };
+  }
+  var d1 = rollDie(), d2 = rollDie();
+  if (sc === "long_quote") {
+    return buildRoll(d1, d2, SKILLS.find(function(s){ return s.name === "RHETORIC"; }));
+  }
+  if (d1 === 1 && d2 === 1) {
+    return { die1:1,die2:1,total:2, die1_asset:"dice/die1.png",die2_asset:"dice/die1.png",
+      header:"CRITICAL FAILURE", quote:"Two ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.",
+      asset_path:"Physique/Half_Light.jpg", is_critical:true, accent_color:"#D71921" };
+  }
+  if (d1 === 6 && d2 === 6) {
+    return { die1:6,die2:6,total:12, die1_asset:"dice/die6.png",die2_asset:"dice/die6.png",
+      header:"CRITICAL SUCCESS", quote:"Double sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.",
+      asset_path:"Psyche/Volition.jpg", is_critical:true, accent_color:"#7D6BB3" };
+  }
+  var pool = SKILLS;
+  if (sc === "intellect") pool = SKILLS.filter(function(s){ return s.group === "intellect"; });
+  else if (sc === "psyche")   pool = SKILLS.filter(function(s){ return s.group === "psyche"; });
+  else if (sc === "physique") pool = SKILLS.filter(function(s){ return s.group === "physique"; });
+  else if (sc === "motorics") pool = SKILLS.filter(function(s){ return s.group === "motorics"; });
+  return buildRoll(d1, d2, pool[Math.floor(Math.random() * pool.length)]);
+}
+
+var widget      = document.getElementById("widget-frame");
+var headerEl    = document.getElementById("header");
+var quoteEl     = document.getElementById("quote");
+var portrait    = document.getElementById("portrait");
+var diceEl      = document.getElementById("dice");
+var flash       = document.getElementById("roll-flash");
+var photoToggle = document.getElementById("photo-toggle");
+
+function renderRoll(data) {
+  widget.style.setProperty("--accent", data.accent_color || "#777");
+  widget.style.borderColor = data.accent_color || "#777";
+  photoToggle.style.borderColor = data.accent_color || "#777";
+  headerEl.textContent = data.header;
+  headerEl.className   = data.is_critical ? "critical" : "";
+  quoteEl.textContent  = "\u201C" + data.quote + "\u201D";
+  var len = data.quote.length;
+  quoteEl.style.setProperty("--quote-size", len > 500 ? ".46rem" : len > 360 ? ".62rem" : ".82rem");
+  var isLong   = len > 360;
+  var contentH = isLong ? Math.min(178, 112 + Math.ceil((len - 360) / 100) * 14) : 132;
+  widget.style.setProperty("--content-height",  contentH + "px");
+  widget.style.setProperty("--gradient-start", isLong ? "18%" : "35%");
+  widget.style.setProperty("--gradient-mid",   isLong ? "62%" : "72%");
+  portrait.style.backgroundImage =
+    'linear-gradient(#0000, #000c), url("/assets/skills/' + data.asset_path + '")';
+  diceEl.innerHTML = [data.die1_asset, data.die2_asset]
+    .map(function(a){ return '<img alt="die" src="/assets/' + a + '" onerror="this.style.display=\'none\'">'; }).join("");
+}
+
+var MONTAGE_POOL = SKILLS.map(function(s){ return s.assetPath; });
+function wait(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+
+var hasShownOpeningRoll = false;
+var isRolling = false;
+
+async function handleTap() {
+  if (isRolling) return;
+  isRolling = true;
+  widget.classList.remove("photo-only");
+  widget.setAttribute("aria-busy", "true");
+  photoToggle.setAttribute("aria-label", "View photo");
+  photoToggle.setAttribute("title", "View photo");
+  try {
+    var data = mockRoll();
+    if (!hasShownOpeningRoll) {
+      hasShownOpeningRoll = true;
+      widget.classList.add("montage");
+      var frames = MONTAGE_POOL.slice().sort(function(){ return Math.random() - .5; }).slice(0, 10);
+      for (var i = 0; i < frames.length; i++) {
+        portrait.style.backgroundImage = 'url("/assets/skills/' + frames[i] + '")';
+        await wait(190);
+      }
+      renderRoll(data);
+      widget.classList.remove("montage");
+      flash.className = "roll-flash flash";
+      await wait(950);
+    } else {
+      renderRoll(data);
+    }
+    updateStats(data);
+    addLogEntry(data);
+  } catch(err) {
+    console.error("Roll error:", err);
+  } finally {
+    flash.className = "roll-flash";
+    widget.removeAttribute("aria-busy");
+    isRolling = false;
+  }
+}
+
+widget.addEventListener("click", handleTap);
+widget.addEventListener("keydown", function(e) {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleTap(); }
+});
+photoToggle.addEventListener("click", function(e) {
+  e.stopPropagation();
+  var isPhoto = widget.classList.toggle("photo-only");
+  var lbl = isPhoto ? "Return to Disco Check" : "View photo";
+  photoToggle.setAttribute("aria-label", lbl);
+  photoToggle.setAttribute("title", lbl);
+});
+
+document.getElementById("btn-random").addEventListener("click", function() {
+  nextScenario = null; handleTap();
+});
+document.querySelectorAll(".scenario-btn[data-scenario]").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    nextScenario = btn.dataset.scenario; handleTap();
+  });
+});
+
+var statTotal = document.getElementById("stat-total");
+var statCF    = document.getElementById("stat-cf");
+var statCS    = document.getElementById("stat-cs");
+var statAvg   = document.getElementById("stat-avg");
+var rollLog   = document.getElementById("roll-log");
+var sessions  = { total:0, cf:0, cs:0, sumTotal:0 };
+
+function updateStats(data) {
+  sessions.total++;
+  sessions.sumTotal += data.total;
+  if (data.is_critical && data.die1 === 1) sessions.cf++;
+  if (data.is_critical && data.die1 === 6) sessions.cs++;
+  statTotal.textContent = sessions.total;
+  statCF.textContent    = sessions.cf;
+  statCS.textContent    = sessions.cs;
+  statAvg.textContent   = (sessions.sumTotal / sessions.total).toFixed(1);
+}
+
+var DIE_EMOJI = ["", "\u2680","\u2681","\u2682","\u2683","\u2684","\u2685"];
+
+function addLogEntry(data) {
+  if (rollLog.querySelector(".log-empty")) rollLog.innerHTML = "";
+  var cls = data.is_critical ? (data.die1 === 1 ? " crit-f" : " crit-s") : "";
+  var entry = document.createElement("div");
+  entry.className = "log-entry" + cls;
+  entry.innerHTML =
+    '<span class="log-dice" aria-hidden="true">' + (DIE_EMOJI[data.die1]||data.die1) + (DIE_EMOJI[data.die2]||data.die2) + '</span>' +
+    '<div class="log-meta">' +
+      '<span class="log-skill">' + data.header + '</span>' +
+      '<span class="log-total">Total: ' + data.total + '</span>' +
+    '</div>';
+  rollLog.prepend(entry);
+  while (rollLog.children.length > 30) rollLog.removeChild(rollLog.lastChild);
+}
+</script>
+</body>
+</html>

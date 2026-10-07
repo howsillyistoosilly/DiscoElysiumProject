@@ -1,102 +1,157 @@
-# Disco Check widget
+# Disco Check — v2.0
 
-The Go backend owns the 2d6 roll and quote selection. `src/widget.js` adapts
-that response to the Nothing widget layout contract.
+A 2d6 skill-check widget for Android with authentic *Disco Elysium* quotes. Comes
+as a home-screen app widget and a full-screen preview activity, both powered by the
+same 24-skill dataset as the Go backend.
 
-## Test in a browser (no Android Studio)
+---
 
-From the project root:
+## What's new in v2.0
+
+| Area | Change |
+|------|--------|
+| **Roll engine** | Full 24-skill dataset (Intellect · Psyche · Physique · Motorics) with authentic quotes |
+| **Criticals** | Snake-eyes (1+1) → **CRITICAL FAILURE**, boxcars (6+6) → **CRITICAL SUCCESS** |
+| **Colours** | Per-stat accent: Intellect gold · Psyche purple · Physique rose · Motorics teal |
+| **Tests** | 14 Go engine unit tests (dice range, asset filenames, critical paths, skill completeness) |
+| **Emulator** | Self-contained browser emulator at `/emulator.html` — no backend required |
+| **CI** | Three-job workflow: engine tests → signed APK → GitHub Release with install notes |
+
+---
+
+## Local development
+
+### Browser playground (no Android Studio needed)
 
 ```sh
 go run ./disco-backend
 ```
 
-Open <http://localhost:8080>. The local playground uses the same `/api/roll`
-endpoint and asset URLs as the widget. `GET /api/health` checks reachability.
-Open <http://localhost:8080/dashboard> to preview and edit all dashboard lines
-in a browser. Browser edits are local to that browser; APK edits are stored on
-the phone and are shared with its home-screen widget.
+| URL | Purpose |
+|-----|---------|
+| `http://localhost:8080` | Widget preview (`web/index.html`) |
+| `http://localhost:8080/emulator.html` | Interactive emulator — force any scenario, see roll log & stats |
+| `http://localhost:8080/dashboard` | Android dashboard preview |
+| `http://localhost:8080/api/roll` | Raw JSON roll endpoint |
+| `http://localhost:8080/api/health` | Health check |
 
-Build the sideloadable bundle:
+### Run engine tests
+
+```sh
+go test -v ./disco-backend/engine/...
+```
+
+### Run full test + bundle build
+
+```sh
+./test-widget.sh
+```
+
+### Build the sideloadable widget bundle
 
 ```sh
 ./build-widget.sh
+# Output: dist/widget.js  dist/widget.json  dist/assets/
 ```
 
-The output is `dist/`, containing `widget.js`, `widget.json`, and image assets.
-The backend works when started from either the project root or `disco-backend/`.
-
-## Physical Nothing Phone testing
-
-1. Enable Developer Mode for Widgets in Nothing OS / Nothing Launcher settings.
-2. Connect the phone over USB and verify it is visible:
-
-   ```sh
-   adb devices
-   ```
-
-3. Build the bundle, then use the Community Widget Hub local importer to select
-   `dist/`. If your Hub exposes an ADB importer, push the same directory using
-   its documented destination:
-
-   ```sh
-   adb push dist/ <community-widget-import-directory>
-   ```
-
-The exact importer directory is OS/Hub-version specific; do not guess it.
+---
 
 ## Android APK
 
-This repository now also contains a generic Android APK wrapper in
-[`android/`](./android). It packages the widget UI and image assets locally,
-so the installed APK can roll without a Go server or `localhost` connection.
-It includes an editable dashboard and a standard Android home-screen widget
-provider. After installing, open **Disco Check** to edit every line. Then
-long-press an empty area of the Nothing Launcher home screen, choose
-**Widgets**, find **Disco Check**, and drag it onto the home screen. Tap the
-widget to roll. If it does not appear immediately, restart Nothing Launcher
-or reboot the phone once after installing the APK.
+### Build & release via GitHub Actions (recommended)
 
-### Build on GitHub
-
-1. Create a GitHub repository and push this project:
+1. Push this repository to GitHub.
+2. Tag and push `v2.0.0`:
 
    ```sh
-   git init
-   git add .
-   git commit -m "Add Disco Check widget and Android APK"
-   git branch -M main
-   git remote add origin https://github.com/<you>/<repo>.git
-   git push -u origin main
+   git tag v2.0.0
+   git push origin v2.0.0
    ```
 
-2. Create and push a version tag:
+3. GitHub Actions runs three jobs:
+   - **Go engine tests** — all 14 unit tests must pass
+   - **Build signed APK** — Gradle assembles `disco-check-v2.0.0.apk`
+   - **Publish GitHub Release** — APK attached as a downloadable asset with install notes
 
-   ```sh
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
+4. On your phone: download the APK → open → install.
 
-3. GitHub Actions builds the APK and creates a **Disco Check v1.0.0** release
-   with the APK attached as a downloadable asset. It also uploads the APK as a
-   workflow artifact.
-4. On the phone, enable installation from the browser/files app, download the
-   APK from the GitHub release, and open it to install.
+For a build without a tag (e.g. testing CI), use **Actions → Disco Check v2.0 — Build & Release APK → Run workflow**.
 
-For a build without publishing a release, open **Actions → Build Android APK →
-Run workflow** and download the generated artifact.
+### Persistent signing (keep updates installable without uninstalling)
 
-For USB installation after downloading:
+Without secrets, each CI run generates a fresh self-signed key and Android will
+require the old app to be uninstalled before updating. To avoid this, add these
+four repository secrets under **Settings → Secrets → Actions**:
+
+| Secret | Value |
+|--------|-------|
+| `DISCO_KEYSTORE_BASE64` | `base64 < your-release.keystore` |
+| `DISCO_KEYSTORE_PASSWORD` | Store password |
+| `DISCO_KEY_ALIAS` | Key alias |
+| `DISCO_KEY_PASSWORD` | Key password |
+
+Generate a keystore once:
 
 ```sh
-adb install -r disco-check-v1.0.0.apk
+keytool -genkeypair -v \
+  -keystore disco-release.keystore \
+  -storepass YOUR_STORE_PASS \
+  -keypass   YOUR_KEY_PASS \
+  -alias     disco-check \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -dname "CN=Disco Check, O=YourName, C=US"
+
+base64 < disco-release.keystore | pbcopy   # macOS — paste into DISCO_KEYSTORE_BASE64
 ```
 
-GitHub releases are signed with a temporary CI release key so Android can
-install them. To update an existing install without uninstalling it, add a
-single persistent keystore to GitHub Actions as `DISCO_KEYSTORE_BASE64`, plus
-`DISCO_KEYSTORE_PASSWORD`, `DISCO_KEY_ALIAS`, and `DISCO_KEY_PASSWORD`.
-Without those secrets, a fresh temporary key is generated for each build and
-Android requires the old app to be uninstalled first.
-The widget uses standard Android `AppWidgetProvider` APIs and does not require
-the Community Widget Hub importer.
+### ADB install (USB)
+
+```sh
+adb install -r disco-check-v2.0.0.apk
+```
+
+---
+
+## Physical Nothing Phone / widget launcher testing
+
+1. Enable **Developer Mode for Widgets** in Nothing OS Launcher settings.
+2. Connect over USB and verify: `adb devices`
+3. Install the APK via ADB or sideload.
+4. Long-press the home screen → **Widgets** → **Disco Check** → drag to place.
+5. Tap the widget to roll.
+
+For sideloading the raw widget bundle into a community hub:
+
+```sh
+./build-widget.sh
+adb push dist/ <community-widget-import-directory>
+```
+
+The exact importer path is hub-version specific; consult the hub documentation.
+
+---
+
+## Architecture
+
+```
+DiscoElysiumProject/
+├── src/widget.js              # Distributable widget (Nothing widget contract)
+├── web/
+│   ├── index.html             # Browser widget preview
+│   ├── widget.js              # Widget JS (used by index.html + Android WebView)
+│   └── emulator.html          # Self-contained emulator (no backend needed)
+├── android/
+│   └── app/src/main/java/…/
+│       ├── MainActivity.java  # WebView activity + JS roll bridge (24 skills)
+│       └── DiscoWidgetProvider.java  # Home-screen widget (24 skills, native)
+├── disco-backend/
+│   ├── main.go                # HTTP server (Go)
+│   └── engine/
+│       ├── dice.go            # 2d6 engine + RollResponse
+│       ├── quotes.go          # 24-skill dataset
+│       └── engine_test.go     # 14 unit tests
+├── .github/workflows/
+│   └── android-apk.yml        # Test → Build → Release workflow
+├── build-widget.sh            # Bundle builder
+└── test-widget.sh             # Full test + bundle verify
+```

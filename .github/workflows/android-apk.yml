@@ -1,7 +1,12 @@
-name: Build Android APK
+name: Disco Check v2.0 — Build & Release APK
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v2.0.0). Leave empty to build without publishing."
+        required: false
+        default: ""
   push:
     tags:
       - "v*"
@@ -10,54 +15,153 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  # ── 1. Go engine unit tests ──────────────────────────────────────────────────
+  test:
+    name: Go engine tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run engine unit tests
+        run: go test -v ./disco-backend/engine/...
+
+      - name: Verify widget bundle build
+        run: |
+          chmod +x ./build-widget.sh
+          ./build-widget.sh
+          test -s dist/widget.js
+          test -s dist/widget.json
+
+  # ── 2. Build signed APK ──────────────────────────────────────────────────────
+  build:
+    name: Build signed APK
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      apk_name: ${{ steps.name.outputs.apk_name }}
+      version:  ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - uses: gradle/actions/setup-gradle@v4
-      - name: Restore release signing key
+
+      # Resolve the version: prefer the pushed tag, then the manual input, then "dev"
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="dev-$(echo ${GITHUB_SHA} | cut -c1-7)"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set APK name
+        id: name
+        run: echo "apk_name=disco-check-${{ steps.version.outputs.version }}.apk" >> "$GITHUB_OUTPUT"
+
+      # Use a stored keystore if the secret is provided; otherwise generate a
+      # temporary one so CI still produces a properly-signed (self-signed) APK.
+      - name: Restore or generate release keystore
         working-directory: android
         env:
           DISCO_KEYSTORE_BASE64: ${{ secrets.DISCO_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$DISCO_KEYSTORE_BASE64" ]; then
-            echo "$DISCO_KEYSTORE_BASE64" | base64 --decode > release.keystore
+          if [ -n "${DISCO_KEYSTORE_BASE64}" ]; then
+            echo "Using stored release keystore."
+            echo "${DISCO_KEYSTORE_BASE64}" | base64 --decode > release.keystore
           else
+            echo "No stored keystore found — generating a temporary self-signed key."
             keytool -genkeypair -v \
               -keystore release.keystore \
               -storepass disco-check \
-              -keypass disco-check \
-              -alias disco-check \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Disco Check, OU=Disco Check, O=Disco Check, L=Unknown, S=Unknown, C=US"
+              -keypass   disco-check \
+              -alias     disco-check \
+              -keyalg    RSA \
+              -keysize   2048 \
+              -validity  10000 \
+              -dname     "CN=Disco Check, OU=Widget, O=Disco Check, L=Revachol, S=Unknown, C=ZZ"
           fi
-      - name: Build signed APK
+
+      - name: Build release APK
         working-directory: android
         env:
           DISCO_VERSION_CODE: ${{ github.run_number }}
-          DISCO_VERSION_NAME: ${{ github.ref_name }}
+          DISCO_VERSION_NAME: ${{ steps.version.outputs.version }}
           DISCO_KEYSTORE_PASSWORD: ${{ secrets.DISCO_KEYSTORE_PASSWORD || 'disco-check' }}
-          DISCO_KEY_ALIAS: ${{ secrets.DISCO_KEY_ALIAS || 'disco-check' }}
-          DISCO_KEY_PASSWORD: ${{ secrets.DISCO_KEY_PASSWORD || 'disco-check' }}
-        run: gradle assembleRelease
+          DISCO_KEY_ALIAS:         ${{ secrets.DISCO_KEY_ALIAS        || 'disco-check' }}
+          DISCO_KEY_PASSWORD:      ${{ secrets.DISCO_KEY_PASSWORD      || 'disco-check' }}
+        run: gradle assembleRelease --no-daemon
+
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk "disco-check-${GITHUB_REF_NAME}.apk"
-      - uses: actions/upload-artifact@v4
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             "${{ steps.name.outputs.apk_name }}"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: disco-check-${{ github.ref_name }}-apk
-          path: disco-check-${{ github.ref_name }}.apk
-      - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
+          name: ${{ steps.name.outputs.apk_name }}
+          path: ${{ steps.name.outputs.apk_name }}
+          if-no-files-found: error
+
+  # ── 3. Publish GitHub Release (tag pushes only) ──────────────────────────────
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # needed for --generate-notes
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.apk_name }}
+
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION:  ${{ needs.build.outputs.version }}
+          APK:      ${{ needs.build.outputs.apk_name }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            "disco-check-${GITHUB_REF_NAME}.apk" \
-            --title "Disco Check ${GITHUB_REF_NAME}" \
-            --generate-notes
+          gh release create "${VERSION}" "${APK}" \
+            --title "Disco Check ${VERSION}" \
+            --generate-notes \
+            --notes "## Installation
+
+          1. On your Android device, enable **Install from unknown sources** in Settings.
+          2. Download \`${APK}\` from the Assets section below.
+          3. Open the file to install.
+          4. Open **Disco Check** to preview the widget, then long-press your home screen → **Widgets** → **Disco Check**.
+
+          ## What's new in v2.0
+
+          - Full 24-skill dataset with authentic quotes (all four stat groups)
+          - Proper 2d6 critical detection: snake-eyes → **CRITICAL FAILURE**, boxcars → **CRITICAL SUCCESS**
+          - Per-stat-group accent colours (Intellect gold · Psyche purple · Physique rose · Motorics teal)
+          - Widget emulator at \`/emulator.html\` — test every scenario without a backend
+          - 14 Go engine unit tests covering dice range, asset filenames, critical paths, accent mapping, and full skill completeness
+          - Persistent signing: store \`DISCO_KEYSTORE_BASE64\`, \`DISCO_KEYSTORE_PASSWORD\`, \`DISCO_KEY_ALIAS\`, \`DISCO_KEY_PASSWORD\` as repository secrets to update the installed app without uninstalling it first
+
+          ## ADB install
+
+          \`\`\`sh
+          adb install -r ${APK}
+          \`\`\`
+          "

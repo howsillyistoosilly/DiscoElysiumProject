@@ -2,7 +2,7 @@ plugins {
     id "com.android.application"
 }
 
-def projectRoot = file("../")
+def projectRoot = file("../../")
 
 android {
     namespace "com.discocheck.widget"
@@ -12,8 +12,8 @@ android {
         applicationId "com.discocheck.widget"
         minSdk 26
         targetSdk 35
-        versionCode Integer.parseInt(System.getenv("DISCO_VERSION_CODE") ?: "1")
-        versionName System.getenv("DISCO_VERSION_NAME") ?: "1.0.0"
+        versionCode Integer.parseInt(System.getenv("DISCO_VERSION_CODE") ?: "2")
+        versionName System.getenv("DISCO_VERSION_NAME") ?: "2.0.0"
     }
 
     signingConfigs {
@@ -41,15 +41,14 @@ android {
 
 tasks.register("stageWidgetAssets", Copy) {
     from("$projectRoot/web") {
-        include "index.html", "widget.js"
+        include "index.html", "widget.js", "emulator.html"
     }
     into("$projectRoot/android/app/src/main/assets")
-    rename("widget.js", "widget.js")
 }
 
 tasks.register("stageDashboardAssets", Copy) {
     from("$projectRoot/android") {
-        include "dashboard.html", "dashboard.js"
+        include "dashboard.html"
     }
     into("$projectRoot/android/app/src/main/assets")
 }

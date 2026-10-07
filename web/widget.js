@@ -1,4 +1,7 @@
 const API_BASE = window.DISCO_API_BASE || "";
+const ASSET_BASE = window.location.protocol === "file:"
+  ? "file:///android_asset/assets"
+  : "/assets";
 let hasShownOpeningRoll = false;
 let isRolling = false;
 const montageImages = [
@@ -44,9 +47,9 @@ function renderRoll(data) {
   widget.style.setProperty("--gradient-start", gradientStart);
   widget.style.setProperty("--gradient-mid", gradientMid);
   document.querySelector("#portrait").style.backgroundImage =
-    `linear-gradient(#0000, #000c), url("/assets/skills/${data.asset_path}")`;
+    `linear-gradient(#0000, #000c), url("${ASSET_BASE}/skills/${data.asset_path}")`;
   document.querySelector("#dice").innerHTML = [data.die1_asset, data.die2_asset]
-    .map(asset => `<img alt="die" src="/assets/${asset}">`).join("");
+    .map(asset => `<img alt="die" src="${ASSET_BASE}/${asset}">`).join("");
 }
 
 async function handleWidgetTap() {
@@ -67,7 +70,7 @@ async function handleWidgetTap() {
       widget.classList.add("montage");
       const frames = [...montageImages].sort(() => Math.random() - 0.5).slice(0, 10);
       for (const image of frames) {
-        portrait.style.backgroundImage = `url("${image}")`;
+        portrait.style.backgroundImage = `url("${ASSET_BASE}/skills/${image.split("/assets/skills/").pop()}")`;
         await wait(190);
       }
       renderRoll(await rollCheck());
