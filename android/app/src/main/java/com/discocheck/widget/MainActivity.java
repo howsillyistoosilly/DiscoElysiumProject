@@ -112,30 +112,55 @@ public final class MainActivity extends Activity {
     // ── JS bridge ─────────────────────────────────────────────────────────────
 
     private final class RollBridge {
+        private static final long COOLDOWN_MS = 10_000L;
+        private long lastRollTime = 0;
+        private int lastD1 = 1;
+        private int lastD2 = 6;
+
         @JavascriptInterface
         public String roll() {
-            int d1 = rng.nextInt(6) + 1;
-            int d2 = rng.nextInt(6) + 1;
-            boolean isCritical = (d1 == d2) && (d1 == 1 || d1 == 6);
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastRollTime;
 
+            int d1;
+            int d2;
+            boolean isCritical = false;
             String header, quote, assetPath, accent;
 
-            if (d1 == 1 && d2 == 1) {
-                header    = "CRITICAL FAILURE";
-                quote     = "Two ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.";
-                assetPath = "Physique/Half_Light.jpg";
-                accent    = "#D71921";
-            } else if (d1 == 6 && d2 == 6) {
-                header    = "CRITICAL SUCCESS";
-                quote     = "Double sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.";
+            if (lastRollTime > 0 && elapsed < COOLDOWN_MS) {
+                long remainingSec = Math.max(1, (long) Math.ceil((COOLDOWN_MS - elapsed) / 1000.0));
+                d1 = lastD1;
+                d2 = lastD2;
+                header = "VOLITION";
+                quote = "Hold it together. Be patient. The dice aren\u2019t going anywhere \u2014 steady your hands and give it a moment ("
+                        + remainingSec + "s) before you throw again.";
                 assetPath = "Psyche/Volition.jpg";
-                accent    = "#7D6BB3";
+                accent = "#8170B2";
             } else {
-                String[] skill = SKILLS[rng.nextInt(SKILLS.length)];
-                header    = skill[0];
-                quote     = skill[1];
-                assetPath = skill[2];
-                accent    = skill[3];
+                lastRollTime = now;
+                d1 = rng.nextInt(6) + 1;
+                d2 = rng.nextInt(6) + 1;
+                lastD1 = d1;
+                lastD2 = d2;
+                isCritical = (d1 == d2) && (d1 == 1 || d1 == 6);
+
+                if (d1 == 1 && d2 == 1) {
+                    header    = "CRITICAL FAILURE";
+                    quote     = "Two ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.";
+                    assetPath = "Physique/Half_Light.jpg";
+                    accent    = "#D71921";
+                } else if (d1 == 6 && d2 == 6) {
+                    header    = "CRITICAL SUCCESS";
+                    quote     = "Double sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.";
+                    assetPath = "Psyche/Volition.jpg";
+                    accent    = "#7D6BB3";
+                } else {
+                    String[] skill = SKILLS[rng.nextInt(SKILLS.length)];
+                    header    = skill[0];
+                    quote     = skill[1];
+                    assetPath = skill[2];
+                    accent    = skill[3];
+                }
             }
 
             JSONObject result = new JSONObject();

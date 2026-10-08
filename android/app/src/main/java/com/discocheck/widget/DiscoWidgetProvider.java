@@ -109,11 +109,17 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
           "assets/skills/Motorics/Composure.jpg", "#6C9B9A" },
     };
 
+    private static final long COOLDOWN_MS = 10_000L;
+    private static final String PREFS_NAME = "disco_widget_state";
+    private static final String KEY_LAST_ROLL_TIME = "last_roll_time";
+    private static final String KEY_LAST_D1 = "last_d1";
+    private static final String KEY_LAST_D2 = "last_d2";
+
     // ── AppWidgetProvider callbacks ───────────────────────────────────────────
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
-        for (int id : ids) update(context, manager, id);
+        for (int id : ids) update(context, manager, id, false);
     }
 
     @Override
@@ -121,36 +127,71 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         super.onReceive(context, intent);
         if (ACTION_ROLL.equals(intent.getAction())) {
             AppWidgetManager manager = AppWidgetManager.getInstance(context);
-            ComponentName component = new ComponentName(context, DiscoWidgetProvider.class);
-            for (int id : manager.getAppWidgetIds(component)) update(context, manager, id);
+            int targetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            if (targetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                update(context, manager, targetId, true);
+            } else {
+                ComponentName component = new ComponentName(context, DiscoWidgetProvider.class);
+                for (int id : manager.getAppWidgetIds(component)) {
+                    update(context, manager, id, true);
+                }
+            }
         }
     }
 
     // ── Roll logic ────────────────────────────────────────────────────────────
 
-    private void update(Context context, AppWidgetManager manager, int id) {
-        Random rng = new Random();
-        int d1 = rng.nextInt(6) + 1;
-        int d2 = rng.nextInt(6) + 1;
+    private void update(Context context, AppWidgetManager manager, int id, boolean isUserTap) {
+        android.content.SharedPreferences prefs =
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long lastRollTime = prefs.getLong(KEY_LAST_ROLL_TIME, 0);
+        long now = System.currentTimeMillis();
+        long elapsed = now - lastRollTime;
 
+        int d1;
+        int d2;
         String title, quote, portrait, accent;
 
-        if (d1 == 1 && d2 == 1) {
-            title   = "CRITICAL FAILURE";
-            quote   = "\u201CTwo ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.\u201D";
-            portrait = "assets/skills/Physique/Half_Light.jpg";
-            accent  = "#D71921";
-        } else if (d1 == 6 && d2 == 6) {
-            title   = "CRITICAL SUCCESS";
-            quote   = "\u201CDouble sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.\u201D";
+        if (isUserTap && lastRollTime > 0 && elapsed < COOLDOWN_MS) {
+            // Cooldown active: Volition tells you to be patient
+            long remainingSec = Math.max(1, (long) Math.ceil((COOLDOWN_MS - elapsed) / 1000.0));
+            d1 = prefs.getInt(KEY_LAST_D1, 1);
+            d2 = prefs.getInt(KEY_LAST_D2, 6);
+            title = "VOLITION";
+            quote = "\u201CHold it together. Be patient. The dice aren\u2019t going anywhere \u2014 steady your hands and give it a moment ("
+                    + remainingSec + "s) before you throw again.\u201D";
             portrait = "assets/skills/Psyche/Volition.jpg";
-            accent  = "#7D6BB3";
+            accent = "#8170B2";
         } else {
-            String[] skill = SKILLS[rng.nextInt(SKILLS.length)];
-            title   = skill[0];
-            quote   = skill[1];
-            portrait = skill[2];
-            accent  = skill[3];
+            Random rng = new Random();
+            d1 = rng.nextInt(6) + 1;
+            d2 = rng.nextInt(6) + 1;
+
+            if (isUserTap) {
+                prefs.edit()
+                     .putLong(KEY_LAST_ROLL_TIME, now)
+                     .putInt(KEY_LAST_D1, d1)
+                     .putInt(KEY_LAST_D2, d2)
+                     .apply();
+            }
+
+            if (d1 == 1 && d2 == 1) {
+                title   = "CRITICAL FAILURE";
+                quote   = "\u201CTwo ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.\u201D";
+                portrait = "assets/skills/Physique/Half_Light.jpg";
+                accent  = "#D71921";
+            } else if (d1 == 6 && d2 == 6) {
+                title   = "CRITICAL SUCCESS";
+                quote   = "\u201CDouble sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.\u201D";
+                portrait = "assets/skills/Psyche/Volition.jpg";
+                accent  = "#7D6BB3";
+            } else {
+                String[] skill = SKILLS[rng.nextInt(SKILLS.length)];
+                title   = skill[0];
+                quote   = skill[1];
+                portrait = skill[2];
+                accent  = skill[3];
+            }
         }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.disco_widget);
@@ -165,11 +206,22 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                 "assets/dice/die" + d2 + ".png", false);
 
         Intent rollIntent = new Intent(context, DiscoWidgetProvider.class)
-                .setAction(ACTION_ROLL);
+                .setAction(ACTION_ROLL)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+                .setData(android.net.Uri.parse("disco://widget/roll/" + id));
+
         PendingIntent pending = PendingIntent.getBroadcast(
                 context, id, rollIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         views.setOnClickPendingIntent(R.id.widget_root, pending);
+        views.setOnClickPendingIntent(R.id.widget_portrait, pending);
+        views.setOnClickPendingIntent(R.id.widget_scrim, pending);
+        views.setOnClickPendingIntent(R.id.widget_content, pending);
+        views.setOnClickPendingIntent(R.id.widget_title, pending);
+        views.setOnClickPendingIntent(R.id.widget_quote, pending);
+        views.setOnClickPendingIntent(R.id.widget_die_one, pending);
+        views.setOnClickPendingIntent(R.id.widget_die_two, pending);
 
         try {
             manager.updateAppWidget(id, views);
