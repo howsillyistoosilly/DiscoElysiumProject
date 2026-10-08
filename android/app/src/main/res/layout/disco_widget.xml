@@ -1,82 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Single-state layout — no visibility toggling.
+    Idle state:   portrait is empty (black card), title = "DISCO CHECK", quote = "Tap to roll."
+    Result state: portrait filled, title = skill name, quote = skill quote
+    Volition:     portrait = Volition.jpg, title = "VOLITION", quote = patience message
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/disco_widget_background">
 
-    <!-- Portrait image shown after rolling; GONE in idle state -->
+    <!-- Skill portrait — empty in idle state, filled after roll -->
     <ImageView
         android:id="@+id/widget_portrait"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@null"
-        android:scaleType="centerCrop"
-        android:visibility="gone" />
+        android:scaleType="centerCrop" />
 
-    <!-- Gradient scrim over portrait; GONE in idle state -->
+    <!-- Gradient scrim always present — invisible when portrait is empty -->
     <ImageView
         android:id="@+id/widget_scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@null"
         android:scaleType="fitXY"
-        android:src="@drawable/disco_widget_scrim"
-        android:visibility="gone" />
+        android:src="@drawable/disco_widget_scrim" />
 
-    <!-- ── IDLE STATE: two large dice centred on the card ──────────────────── -->
-    <LinearLayout
-        android:id="@+id/widget_idle"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center"
-        android:orientation="vertical">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/widget_idle_die_one"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:contentDescription="@null"
-                android:padding="6dp" />
-
-            <ImageView
-                android:id="@+id/widget_idle_die_two"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:contentDescription="@null"
-                android:padding="6dp" />
-
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/widget_idle_hint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="TAP TO ROLL"
-            android:textColor="#9A8FBF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.12" />
-
-    </LinearLayout>
-
-    <!-- ── RESULT STATE: portrait + bottom-anchored skill content ──────────── -->
+    <!-- Bottom content strip (always visible) -->
     <LinearLayout
         android:id="@+id/widget_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="bottom"
         android:orientation="vertical"
-        android:padding="14dp"
-        android:visibility="gone">
+        android:padding="14dp">
 
+        <!-- Top bar: title + two dice -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -90,26 +51,28 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#D0D0D0"
+                android:text="DISCO CHECK"
+                android:textColor="#B7A0E5"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
             <ImageView
                 android:id="@+id/widget_die_one"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:contentDescription="@null"
-                android:padding="2dp" />
+                android:padding="3dp" />
 
             <ImageView
                 android:id="@+id/widget_die_two"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:contentDescription="@null"
-                android:padding="2dp" />
+                android:padding="3dp" />
 
         </LinearLayout>
 
+        <!-- Quote / prompt text -->
         <TextView
             android:id="@+id/widget_quote"
             android:layout_width="match_parent"
@@ -117,7 +80,8 @@
             android:layout_marginTop="6dp"
             android:ellipsize="end"
             android:maxLines="5"
-            android:textColor="#E2E2E2"
+            android:text="Tap to roll."
+            android:textColor="#D8D8D8"
             android:textSize="13sp" />
 
     </LinearLayout>
