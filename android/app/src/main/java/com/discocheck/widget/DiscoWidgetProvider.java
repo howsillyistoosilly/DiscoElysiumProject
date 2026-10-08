@@ -8,10 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.ColorMatrix;
-import android.graphics.ColorMatrixColorFilter;
-import android.graphics.PorterDuff;
 import android.util.Log;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import java.io.IOException;
@@ -20,10 +18,17 @@ import java.util.Random;
 
 public final class DiscoWidgetProvider extends AppWidgetProvider {
 
-    private static final String TAG = "DiscoWidget";
+    private static final String TAG         = "DiscoWidget";
     private static final String ACTION_ROLL = "com.discocheck.widget.ROLL";
 
-    // ── Full skill table (mirrors engine/quotes.go) ───────────────────────────
+    private static final long   COOLDOWN_MS       = 10_000L;
+    private static final String PREFS_NAME         = "disco_widget_state";
+    private static final String KEY_LAST_ROLL_TIME = "last_roll_time";
+    private static final String KEY_LAST_D1        = "last_d1";
+    private static final String KEY_LAST_D2        = "last_d2";
+    private static final String KEY_HAS_ROLLED     = "has_rolled";
+
+    // ── Full skill table (24 skills, mirrors engine/quotes.go) ───────────────
 
     private static final String[][] SKILLS = {
         // { name, quote, assetPath, accentColor }
@@ -109,80 +114,106 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
           "assets/skills/Motorics/Composure.jpg", "#6C9B9A" },
     };
 
-    private static final long COOLDOWN_MS = 10_000L;
-    private static final String PREFS_NAME = "disco_widget_state";
-    private static final String KEY_LAST_ROLL_TIME = "last_roll_time";
-    private static final String KEY_LAST_D1 = "last_d1";
-    private static final String KEY_LAST_D2 = "last_d2";
-
-    // ── AppWidgetProvider callbacks ───────────────────────────────────────────
+    // ── AppWidgetProvider lifecycle ───────────────────────────────────────────
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
-        for (int id : ids) update(context, manager, id, false);
+        for (int id : ids) {
+            renderIdle(context, manager, id);
+        }
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
-        if (ACTION_ROLL.equals(intent.getAction())) {
-            AppWidgetManager manager = AppWidgetManager.getInstance(context);
-            int targetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
-            if (targetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                update(context, manager, targetId, true);
-            } else {
-                ComponentName component = new ComponentName(context, DiscoWidgetProvider.class);
-                for (int id : manager.getAppWidgetIds(component)) {
-                    update(context, manager, id, true);
-                }
+        if (!ACTION_ROLL.equals(intent.getAction())) return;
+
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        int targetId = intent.getIntExtra(
+                AppWidgetManager.EXTRA_APPWIDGET_ID,
+                AppWidgetManager.INVALID_APPWIDGET_ID);
+
+        if (targetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            handleRoll(context, manager, targetId);
+        } else {
+            ComponentName comp = new ComponentName(context, DiscoWidgetProvider.class);
+            for (int id : manager.getAppWidgetIds(comp)) {
+                handleRoll(context, manager, id);
             }
         }
     }
 
-    // ── Roll logic ────────────────────────────────────────────────────────────
+    // ── Idle state renderer ────────────────────────────────────────────────────
+    // Shows two centred d6 icons and "TAP TO ROLL". No portrait, no skill text.
 
-    private void update(Context context, AppWidgetManager manager, int id, boolean isUserTap) {
+    private void renderIdle(Context context, AppWidgetManager manager, int id) {
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.disco_widget);
+
+        // Show idle panel, hide result panels
+        views.setViewVisibility(R.id.widget_idle,    View.VISIBLE);
+        views.setViewVisibility(R.id.widget_content, View.GONE);
+        views.setViewVisibility(R.id.widget_portrait, View.GONE);
+        views.setViewVisibility(R.id.widget_scrim,   View.GONE);
+
+        // Centred dice — show die 1 and 2 as decorative (fixed at d6)
+        setAssetImage(context, views, R.id.widget_idle_die_one, "assets/dice/die6.png", false);
+        setAssetImage(context, views, R.id.widget_idle_die_two, "assets/dice/die6.png", false);
+
+        wireRollIntent(context, views, id);
+        applyUpdate(manager, id, views);
+    }
+
+    // ── Roll / Volition handler ────────────────────────────────────────────────
+
+    private void handleRoll(Context context, AppWidgetManager manager, int id) {
         android.content.SharedPreferences prefs =
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
         long lastRollTime = prefs.getLong(KEY_LAST_ROLL_TIME, 0);
-        long now = System.currentTimeMillis();
-        long elapsed = now - lastRollTime;
+        long now          = System.currentTimeMillis();
+        long elapsed      = now - lastRollTime;
+        boolean hasRolled = prefs.getBoolean(KEY_HAS_ROLLED, false);
 
-        int d1;
-        int d2;
-        String title, quote, portrait, accent;
-
-        if (isUserTap && lastRollTime > 0 && elapsed < COOLDOWN_MS) {
-            // Cooldown active: Volition tells you to be patient
+        if (hasRolled && elapsed < COOLDOWN_MS) {
+            // ── Cooldown path: Volition asks for patience ─────────────────────
             long remainingSec = Math.max(1, (long) Math.ceil((COOLDOWN_MS - elapsed) / 1000.0));
-            d1 = prefs.getInt(KEY_LAST_D1, 1);
-            d2 = prefs.getInt(KEY_LAST_D2, 6);
-            title = "VOLITION";
-            quote = "\u201CHold it together. Be patient. The dice aren\u2019t going anywhere \u2014 steady your hands and give it a moment ("
-                    + remainingSec + "s) before you throw again.\u201D";
-            portrait = "assets/skills/Psyche/Volition.jpg";
-            accent = "#8170B2";
-        } else {
-            Random rng = new Random();
-            d1 = rng.nextInt(6) + 1;
-            d2 = rng.nextInt(6) + 1;
+            int d1 = prefs.getInt(KEY_LAST_D1, 1);
+            int d2 = prefs.getInt(KEY_LAST_D2, 6);
 
-            if (isUserTap) {
-                prefs.edit()
-                     .putLong(KEY_LAST_ROLL_TIME, now)
-                     .putInt(KEY_LAST_D1, d1)
-                     .putInt(KEY_LAST_D2, d2)
-                     .apply();
-            }
+            renderResult(context, manager, id,
+                    d1, d2,
+                    "VOLITION",
+                    "\u201CHold it together. Take a breath. The dice aren\u2019t going anywhere"
+                            + " \u2014 steady your hands and give it " + remainingSec
+                            + " more second" + (remainingSec == 1 ? "" : "s")
+                            + " before you throw again.\u201D",
+                    "assets/skills/Psyche/Volition.jpg",
+                    "#8170B2");
+        } else {
+            // ── Fresh roll path ───────────────────────────────────────────────
+            Random rng = new Random();
+            int d1 = rng.nextInt(6) + 1;
+            int d2 = rng.nextInt(6) + 1;
+
+            prefs.edit()
+                 .putLong(KEY_LAST_ROLL_TIME, now)
+                 .putInt(KEY_LAST_D1, d1)
+                 .putInt(KEY_LAST_D2, d2)
+                 .putBoolean(KEY_HAS_ROLLED, true)
+                 .apply();
+
+            String title, quote, portrait, accent;
 
             if (d1 == 1 && d2 == 1) {
                 title   = "CRITICAL FAILURE";
-                quote   = "\u201CTwo ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.\u201D";
+                quote   = "\u201CTwo ones stare back at you like empty eye sockets."
+                        + " The universe simply refuses to cooperate.\u201D";
                 portrait = "assets/skills/Physique/Half_Light.jpg";
                 accent  = "#D71921";
             } else if (d1 == 6 && d2 == 6) {
                 title   = "CRITICAL SUCCESS";
-                quote   = "\u201CDouble sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.\u201D";
+                quote   = "\u201CDouble sixes. Pure, unadulterated transcendence."
+                        + " You could split an atom with your bare grin.\u201D";
                 portrait = "assets/skills/Psyche/Volition.jpg";
                 accent  = "#7D6BB3";
             } else {
@@ -192,46 +223,82 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                 portrait = skill[2];
                 accent  = skill[3];
             }
-        }
 
+            renderResult(context, manager, id, d1, d2, title, quote, portrait, accent);
+        }
+    }
+
+    // ── Result state renderer ──────────────────────────────────────────────────
+    // Shows skill portrait, gradient scrim, title, dice, and quote at the bottom.
+
+    private void renderResult(Context context, AppWidgetManager manager, int id,
+                              int d1, int d2,
+                              String title, String quote,
+                              String portrait, String accent) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.disco_widget);
+
+        // Hide idle, show result panels
+        views.setViewVisibility(R.id.widget_idle,    View.GONE);
+        views.setViewVisibility(R.id.widget_portrait, View.VISIBLE);
+        views.setViewVisibility(R.id.widget_scrim,   View.VISIBLE);
+        views.setViewVisibility(R.id.widget_content, View.VISIBLE);
+
+        // Skill portrait
+        setAssetImage(context, views, R.id.widget_portrait, portrait, true);
+
+        // Title + accent colour
         views.setTextViewText(R.id.widget_title, title);
-        views.setTextColor(R.id.widget_title, parseAccentForTitle(accent));
+        views.setTextColor(R.id.widget_title, accentColor(accent));
+
+        // Quote
         views.setTextViewText(R.id.widget_quote, quote);
 
-        setAssetImage(context, views, R.id.widget_portrait, portrait, true);
-        setAssetImage(context, views, R.id.widget_die_one,
-                "assets/dice/die" + d1 + ".png", false);
-        setAssetImage(context, views, R.id.widget_die_two,
-                "assets/dice/die" + d2 + ".png", false);
+        // Dice (result-state, small, bottom-right)
+        setAssetImage(context, views, R.id.widget_die_one, "assets/dice/die" + d1 + ".png", false);
+        setAssetImage(context, views, R.id.widget_die_two, "assets/dice/die" + d2 + ".png", false);
 
+        wireRollIntent(context, views, id);
+        applyUpdate(manager, id, views);
+    }
+
+    // ── Shared helpers ────────────────────────────────────────────────────────
+
+    /** Attaches the ROLL broadcast PendingIntent to every tappable view in the layout. */
+    private void wireRollIntent(Context context, RemoteViews views, int id) {
         Intent rollIntent = new Intent(context, DiscoWidgetProvider.class)
                 .setAction(ACTION_ROLL)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+                // Unique URI ensures distinct PendingIntents per widget instance
                 .setData(android.net.Uri.parse("disco://widget/roll/" + id));
 
         PendingIntent pending = PendingIntent.getBroadcast(
                 context, id, rollIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        views.setOnClickPendingIntent(R.id.widget_root, pending);
-        views.setOnClickPendingIntent(R.id.widget_portrait, pending);
-        views.setOnClickPendingIntent(R.id.widget_scrim, pending);
-        views.setOnClickPendingIntent(R.id.widget_content, pending);
-        views.setOnClickPendingIntent(R.id.widget_title, pending);
-        views.setOnClickPendingIntent(R.id.widget_quote, pending);
-        views.setOnClickPendingIntent(R.id.widget_die_one, pending);
-        views.setOnClickPendingIntent(R.id.widget_die_two, pending);
+        // Wire every view so tapping anywhere on the card works
+        views.setOnClickPendingIntent(R.id.widget_root,         pending);
+        views.setOnClickPendingIntent(R.id.widget_idle,         pending);
+        views.setOnClickPendingIntent(R.id.widget_idle_die_one, pending);
+        views.setOnClickPendingIntent(R.id.widget_idle_die_two, pending);
+        views.setOnClickPendingIntent(R.id.widget_idle_hint,    pending);
+        views.setOnClickPendingIntent(R.id.widget_portrait,     pending);
+        views.setOnClickPendingIntent(R.id.widget_scrim,        pending);
+        views.setOnClickPendingIntent(R.id.widget_content,      pending);
+        views.setOnClickPendingIntent(R.id.widget_title,        pending);
+        views.setOnClickPendingIntent(R.id.widget_quote,        pending);
+        views.setOnClickPendingIntent(R.id.widget_die_one,      pending);
+        views.setOnClickPendingIntent(R.id.widget_die_two,      pending);
+    }
 
+    private void applyUpdate(AppWidgetManager manager, int id, RemoteViews views) {
         try {
             manager.updateAppWidget(id, views);
         } catch (Throwable e) {
-            Log.e(TAG, "Failed to update app widget: " + id, e);
+            Log.e(TAG, "Failed to update widget " + id, e);
         }
     }
 
-    /** Critical titles get the accent colour; regular titles get the muted white. */
-    private static int parseAccentForTitle(String hex) {
+    private static int accentColor(String hex) {
         try {
             return Color.parseColor(hex);
         } catch (IllegalArgumentException ignored) {
@@ -245,6 +312,7 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         try {
             return context.getAssets().open(path);
         } catch (IOException e) {
+            // Try both with and without the leading "assets/" prefix
             if (path.startsWith("assets/")) {
                 return context.getAssets().open(path.substring("assets/".length()));
             } else {
@@ -254,9 +322,11 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     }
 
     private static void setAssetImage(
-            Context context, RemoteViews views, int viewId, String assetPath, boolean isPortrait) {
+            Context context, RemoteViews views, int viewId,
+            String assetPath, boolean isPortrait) {
         try {
-            int maxDim = isPortrait ? 280 : 64;
+            int maxDim = isPortrait ? 300 : 96;
+
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             try (InputStream in = openAssetStream(context, assetPath)) {
@@ -281,7 +351,7 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                 }
             }
         } catch (Throwable e) {
-            Log.w(TAG, "Unable to load widget asset: " + assetPath, e);
+            Log.w(TAG, "Unable to load asset: " + assetPath, e);
         }
     }
 }

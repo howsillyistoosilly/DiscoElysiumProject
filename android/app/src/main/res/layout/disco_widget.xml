@@ -5,28 +5,77 @@
     android:layout_height="match_parent"
     android:background="@drawable/disco_widget_background">
 
+    <!-- Portrait image shown after rolling; GONE in idle state -->
     <ImageView
         android:id="@+id/widget_portrait"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@null"
-        android:scaleType="centerCrop" />
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
 
+    <!-- Gradient scrim over portrait; GONE in idle state -->
     <ImageView
         android:id="@+id/widget_scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@null"
         android:scaleType="fitXY"
-        android:src="@drawable/disco_widget_scrim" />
+        android:src="@drawable/disco_widget_scrim"
+        android:visibility="gone" />
 
+    <!-- ── IDLE STATE: two large dice centred on the card ──────────────────── -->
+    <LinearLayout
+        android:id="@+id/widget_idle"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/widget_idle_die_one"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:contentDescription="@null"
+                android:padding="6dp" />
+
+            <ImageView
+                android:id="@+id/widget_idle_die_two"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:contentDescription="@null"
+                android:padding="6dp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_idle_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="TAP TO ROLL"
+            android:textColor="#9A8FBF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.12" />
+
+    </LinearLayout>
+
+    <!-- ── RESULT STATE: portrait + bottom-anchored skill content ──────────── -->
     <LinearLayout
         android:id="@+id/widget_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="bottom"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:padding="14dp"
+        android:visibility="gone">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -41,24 +90,24 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="DISCO CHECK"
                 android:textColor="#D0D0D0"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
             <ImageView
                 android:id="@+id/widget_die_one"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:contentDescription="@null"
-                android:padding="3dp" />
+                android:padding="2dp" />
 
             <ImageView
                 android:id="@+id/widget_die_two"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:contentDescription="@null"
-                android:padding="3dp" />
+                android:padding="2dp" />
+
         </LinearLayout>
 
         <TextView
@@ -68,9 +117,9 @@
             android:layout_marginTop="6dp"
             android:ellipsize="end"
             android:maxLines="5"
-            android:text="Tap to roll."
             android:textColor="#E2E2E2"
             android:textSize="13sp" />
 
     </LinearLayout>
+
 </FrameLayout>
