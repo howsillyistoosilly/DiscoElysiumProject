@@ -12,10 +12,28 @@ same 24-skill dataset as the Go backend.
 |------|--------|
 | **Roll engine** | Full 24-skill dataset (Intellect · Psyche · Physique · Motorics) with authentic quotes |
 | **Criticals** | Snake-eyes (1+1) → **CRITICAL FAILURE**, boxcars (6+6) → **CRITICAL SUCCESS** |
+| **Volition Cooldown** | 10-second roll cooldown — rapid re-taps summon **VOLITION** to urge patience |
 | **Colours** | Per-stat accent: Intellect gold · Psyche purple · Physique rose · Motorics teal |
 | **Tests** | 14 Go engine unit tests (dice range, asset filenames, critical paths, skill completeness) |
 | **Emulator** | Self-contained browser emulator at `/emulator.html` — no backend required |
 | **CI** | Three-job workflow: engine tests → signed APK → GitHub Release with install notes |
+
+---
+
+## Backend Engine & API
+
+The Go backend (`disco-backend/`) provides the canonical 2d6 engine and asset server. Full details are in [`disco-backend/README.md`](disco-backend/README.md).
+
+### Key Features
+* **Standard REST API**: Simple, zero-dependency Go HTTP endpoints serving JSON rolls and binary assets.
+* **CORS-enabled**: Permissive headers for easy pairing with any frontend or local test harness.
+* **Deterministic Engine Interface**: Designed with injected RNG interfaces for repeatable unit testing.
+
+### API Endpoints
+* `GET /api/roll` — Rolls 2d6, calculates criticals, and returns skill text, asset paths, and hex accent color.
+* `GET /api/health` — Returns `{"status":"ok"}`.
+* `GET /assets/*` — Serves dice icons and high-resolution skill portraits.
+* `GET /emulator.html` — Serves the interactive browser emulator.
 
 ---
 
