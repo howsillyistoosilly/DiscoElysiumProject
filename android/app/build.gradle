@@ -54,7 +54,9 @@ tasks.register("stageDashboardAssets", Copy) {
 }
 
 tasks.register("stageImageAssets", Copy) {
-    from("$projectRoot/disco-backend/assets")
+    from("$projectRoot/disco-backend/assets") {
+        exclude "*.zip"
+    }
     into("$projectRoot/android/app/src/main/assets/assets")
 }
 

@@ -12,10 +12,13 @@
         android:contentDescription="@null"
         android:scaleType="centerCrop" />
 
-    <View
+    <ImageView
+        android:id="@+id/widget_scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/disco_widget_scrim" />
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/disco_widget_scrim" />
 
     <LinearLayout
         android:layout_width="match_parent"

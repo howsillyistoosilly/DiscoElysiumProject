@@ -155,14 +155,14 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.disco_widget);
         views.setTextViewText(R.id.widget_title, title);
-        views.setInt(R.id.widget_title, "setTextColor", parseAccentForTitle(accent));
+        views.setTextColor(R.id.widget_title, parseAccentForTitle(accent));
         views.setTextViewText(R.id.widget_quote, quote);
 
-        setAssetImage(context, views, R.id.widget_portrait, portrait);
+        setAssetImage(context, views, R.id.widget_portrait, portrait, true);
         setAssetImage(context, views, R.id.widget_die_one,
-                "assets/dice/die" + d1 + ".png");
+                "assets/dice/die" + d1 + ".png", false);
         setAssetImage(context, views, R.id.widget_die_two,
-                "assets/dice/die" + d2 + ".png");
+                "assets/dice/die" + d2 + ".png", false);
 
         Intent rollIntent = new Intent(context, DiscoWidgetProvider.class)
                 .setAction(ACTION_ROLL);
@@ -171,7 +171,11 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_root, pending);
 
-        manager.updateAppWidget(id, views);
+        try {
+            manager.updateAppWidget(id, views);
+        } catch (Throwable e) {
+            Log.e(TAG, "Failed to update app widget: " + id, e);
+        }
     }
 
     /** Critical titles get the accent colour; regular titles get the muted white. */
@@ -185,26 +189,46 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
 
     // ── Asset loader ──────────────────────────────────────────────────────────
 
+    private static InputStream openAssetStream(Context context, String path) throws IOException {
+        try {
+            return context.getAssets().open(path);
+        } catch (IOException e) {
+            if (path.startsWith("assets/")) {
+                return context.getAssets().open(path.substring("assets/".length()));
+            } else {
+                return context.getAssets().open("assets/" + path);
+            }
+        }
+    }
+
     private static void setAssetImage(
-            Context context, RemoteViews views, int viewId, String assetPath) {
-        try (InputStream first = context.getAssets().open(assetPath)) {
+            Context context, RemoteViews views, int viewId, String assetPath, boolean isPortrait) {
+        try {
+            int maxDim = isPortrait ? 280 : 64;
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(first, null, bounds);
+            try (InputStream in = openAssetStream(context, assetPath)) {
+                BitmapFactory.decodeStream(in, null, bounds);
+            }
 
             int sample = 1;
-            while (bounds.outWidth / sample > 512 || bounds.outHeight / sample > 512) {
+            while (bounds.outWidth / sample > maxDim || bounds.outHeight / sample > maxDim) {
                 sample *= 2;
             }
 
-            try (InputStream second = context.getAssets().open(assetPath)) {
-                BitmapFactory.Options opts = new BitmapFactory.Options();
-                opts.inSampleSize = sample;
-                views.setImageViewBitmap(
-                        viewId,
-                        BitmapFactory.decodeStream(second, null, opts));
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = Math.max(1, sample);
+            if (isPortrait) {
+                opts.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;
             }
-        } catch (IOException | RuntimeException e) {
+
+            try (InputStream in = openAssetStream(context, assetPath)) {
+                android.graphics.Bitmap bitmap = BitmapFactory.decodeStream(in, null, opts);
+                if (bitmap != null) {
+                    views.setImageViewBitmap(viewId, bitmap);
+                }
+            }
+        } catch (Throwable e) {
             Log.w(TAG, "Unable to load widget asset: " + assetPath, e);
         }
     }
