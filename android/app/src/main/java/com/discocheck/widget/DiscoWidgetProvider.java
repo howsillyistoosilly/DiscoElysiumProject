@@ -17,14 +17,16 @@ import android.widget.RemoteViews;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Home-screen widget for Disco Elysium checks.
  *
- * Visual States:
- *   1. IDLE     — Centered 2d6 dice + "DISCO CHECK" + "TAP TO ROLL".
- *   2. RESULT   — Skill portrait + roll results + quote.
- *   3. VOLITION — Rapid-tap cooldown (10s) reminder with live seconds remaining.
+ * Visual States & Animations:
+ *   1. STANDBY/IDLE : User's Waved Volition 6-pip dice card with "Check your Skill".
+ *   2. MONTAGE      : Rapid skill portraits flashing + dice rolling + emerald green flash.
+ *   3. RESULT       : Resolved skill portrait + rolled dice faces + accent title + quote.
+ *   4. VOLITION     : Rapid-tap cooldown (10s) reminder with live seconds remaining.
  */
 public final class DiscoWidgetProvider extends AppWidgetProvider {
 
@@ -41,6 +43,8 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     private static final String KEY_LAST_QUOTE    = "last_quote";
     private static final String KEY_LAST_ASSET    = "last_asset";
     private static final String KEY_LAST_ACCENT   = "last_accent";
+
+    private static final AtomicBoolean isRolling = new AtomicBoolean(false);
 
     private static final int[] DIE_DRAWABLES = {
         R.drawable.die1,
@@ -154,20 +158,20 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                     AppWidgetManager.INVALID_APPWIDGET_ID);
 
             if (targetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                onRollTapped(ctx, mgr, targetId);
+                handleRoll(ctx, mgr, targetId);
             } else {
                 ComponentName cn = new ComponentName(ctx, DiscoWidgetProvider.class);
                 int[] ids = mgr.getAppWidgetIds(cn);
                 if (ids != null) {
                     for (int id : ids) {
-                        onRollTapped(ctx, mgr, id);
+                        handleRoll(ctx, mgr, id);
                     }
                 }
             }
         }
     }
 
-    // ── State handling ────────────────────────────────────────────────────────
+    // ── State & Roll handling ─────────────────────────────────────────────────
 
     private void restoreOrShowIdle(Context ctx, AppWidgetManager mgr, int id) {
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -192,17 +196,130 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         push(mgr, id, rv);
     }
 
-    private void onRollTapped(Context ctx, AppWidgetManager mgr, int id) {
+    private void handleRoll(Context ctx, AppWidgetManager mgr, int id) {
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         long lastMs    = prefs.getLong(KEY_LAST_ROLL_MS, 0);
         boolean rolled = prefs.getBoolean(KEY_HAS_ROLLED, false);
         long elapsed   = System.currentTimeMillis() - lastMs;
 
+        // Rapid tap under 10s cooldown: Volition cuts in immediately without montage
         if (rolled && elapsed < COOLDOWN_MS) {
             showVolitionCooldown(ctx, mgr, id, prefs, elapsed);
-        } else {
-            doRoll(ctx, mgr, id, prefs);
+            return;
         }
+
+        // Prevent overlapping animations
+        if (!isRolling.compareAndSet(false, true)) {
+            return;
+        }
+
+        final PendingResult pendingResult = goAsync();
+
+        new Thread(() -> {
+            try {
+                runRollAnimation(ctx, mgr, id, prefs);
+            } catch (Throwable t) {
+                Log.e(TAG, "Error in roll animation", t);
+            } finally {
+                isRolling.set(false);
+                pendingResult.finish();
+            }
+        }).start();
+    }
+
+    private void runRollAnimation(Context ctx, AppWidgetManager mgr, int id, SharedPreferences prefs) {
+        Random rng = new Random();
+        int finalD1 = rng.nextInt(6) + 1;
+        int finalD2 = rng.nextInt(6) + 1;
+
+        String finalTitle, finalQuote, finalAsset, finalAccent;
+
+        if (finalD1 == 1 && finalD2 == 1) {
+            finalTitle  = "CRITICAL FAILURE";
+            finalQuote  = "\u201CTwo ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.\u201D";
+            finalAsset  = "skills/Physique/Half_Light.jpg";
+            finalAccent = "#D71921";
+        } else if (finalD1 == 6 && finalD2 == 6) {
+            finalTitle  = "CRITICAL SUCCESS";
+            finalQuote  = "\u201CDouble sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.\u201D";
+            finalAsset  = "skills/Psyche/Volition.jpg";
+            finalAccent = "#7D6BB3";
+        } else {
+            String[] sk = SKILLS[rng.nextInt(SKILLS.length)];
+            finalTitle  = sk[0];
+            finalQuote  = sk[1];
+            finalAsset  = sk[2];
+            finalAccent = sk[3];
+        }
+
+        prefs.edit()
+             .putBoolean(KEY_HAS_ROLLED, true)
+             .putLong(KEY_LAST_ROLL_MS, System.currentTimeMillis())
+             .putInt(KEY_LAST_D1, finalD1)
+             .putInt(KEY_LAST_D2, finalD2)
+             .putString(KEY_LAST_TITLE, finalTitle)
+             .putString(KEY_LAST_QUOTE, finalQuote)
+             .putString(KEY_LAST_ASSET, finalAsset)
+             .putString(KEY_LAST_ACCENT, finalAccent)
+             .apply();
+
+        // ── Phase 1: Rapid Montage Frames (Skill portraits + tumbling dice) ──
+        int montageFrames = 4;
+        for (int i = 0; i < montageFrames; i++) {
+            int randIdx = rng.nextInt(SKILLS.length);
+            String[] mSkill = SKILLS[randIdx];
+            int t1 = rng.nextInt(6) + 1;
+            int t2 = rng.nextInt(6) + 1;
+
+            RemoteViews rv = buildBase(ctx, id);
+            rv.setViewVisibility(R.id.widget_idle_layout, View.GONE);
+            rv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
+            rv.setViewVisibility(R.id.widget_flash, View.GONE);
+
+            rv.setTextViewText(R.id.widget_title, "ROLLING CHECK...");
+            rv.setTextColor(R.id.widget_title, 0xFFC4A35A);
+            rv.setTextViewText(R.id.widget_quote, "\u201CThe dice tumble through the pale...\u201D");
+
+            rv.setImageViewResource(R.id.widget_die_one, DIE_DRAWABLES[t1 - 1]);
+            rv.setImageViewResource(R.id.widget_die_two, DIE_DRAWABLES[t2 - 1]);
+            loadPortrait(ctx, rv, mSkill[2]);
+
+            push(mgr, id, rv);
+            try { Thread.sleep(125); } catch (InterruptedException ignored) {}
+        }
+
+        // ── Phase 2: Dramatic Emerald Green Flash Overlay ────────────────────
+        RemoteViews flashRv = buildBase(ctx, id);
+        flashRv.setViewVisibility(R.id.widget_idle_layout, View.GONE);
+        flashRv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
+        flashRv.setViewVisibility(R.id.widget_flash, View.VISIBLE);
+
+        flashRv.setTextViewText(R.id.widget_title, "CHECK RESOLVED");
+        flashRv.setTextColor(R.id.widget_title, 0xFF58C878);
+        flashRv.setTextViewText(R.id.widget_quote, "\u201CThe pale recedes.\u201D");
+
+        flashRv.setImageViewResource(R.id.widget_die_one, DIE_DRAWABLES[finalD1 - 1]);
+        flashRv.setImageViewResource(R.id.widget_die_two, DIE_DRAWABLES[finalD2 - 1]);
+        loadPortrait(ctx, flashRv, finalAsset);
+
+        push(mgr, id, flashRv);
+        try { Thread.sleep(180); } catch (InterruptedException ignored) {}
+
+        // ── Phase 3: Final Skill Card Revealed ───────────────────────────────
+        RemoteViews finalRv = buildBase(ctx, id);
+        finalRv.setViewVisibility(R.id.widget_idle_layout, View.GONE);
+        finalRv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
+        finalRv.setViewVisibility(R.id.widget_flash, View.GONE);
+
+        finalRv.setTextViewText(R.id.widget_title, finalTitle);
+        finalRv.setTextColor(R.id.widget_title, parseColor(finalAccent));
+        finalRv.setTextViewText(R.id.widget_quote, finalQuote);
+
+        finalRv.setImageViewResource(R.id.widget_die_one, DIE_DRAWABLES[finalD1 - 1]);
+        finalRv.setImageViewResource(R.id.widget_die_two, DIE_DRAWABLES[finalD2 - 1]);
+        loadPortrait(ctx, finalRv, finalAsset);
+
+        push(mgr, id, finalRv);
     }
 
     private void showVolitionCooldown(Context ctx, AppWidgetManager mgr, int id,
@@ -221,63 +338,23 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         renderResultState(ctx, mgr, id, title, quote, asset, accent, d1, d2);
     }
 
-    private void doRoll(Context ctx, AppWidgetManager mgr, int id, SharedPreferences prefs) {
-        Random rng = new Random();
-        int d1 = rng.nextInt(6) + 1;
-        int d2 = rng.nextInt(6) + 1;
-
-        String title, quote, asset, accent;
-
-        if (d1 == 1 && d2 == 1) {
-            title  = "CRITICAL FAILURE";
-            quote  = "\u201CTwo ones stare back at you like empty eye sockets. The universe simply refuses to cooperate.\u201D";
-            asset  = "skills/Physique/Half_Light.jpg";
-            accent = "#D71921";
-        } else if (d1 == 6 && d2 == 6) {
-            title  = "CRITICAL SUCCESS";
-            quote  = "\u201CDouble sixes. Pure, unadulterated transcendence. You could split an atom with your bare grin.\u201D";
-            asset  = "skills/Psyche/Volition.jpg";
-            accent = "#7D6BB3";
-        } else {
-            String[] sk = SKILLS[rng.nextInt(SKILLS.length)];
-            title  = sk[0];
-            quote  = sk[1];
-            asset  = sk[2];
-            accent = sk[3];
-        }
-
-        prefs.edit()
-             .putBoolean(KEY_HAS_ROLLED, true)
-             .putLong(KEY_LAST_ROLL_MS, System.currentTimeMillis())
-             .putInt(KEY_LAST_D1, d1)
-             .putInt(KEY_LAST_D2, d2)
-             .putString(KEY_LAST_TITLE, title)
-             .putString(KEY_LAST_QUOTE, quote)
-             .putString(KEY_LAST_ASSET, asset)
-             .putString(KEY_LAST_ACCENT, accent)
-             .apply();
-
-        renderResultState(ctx, mgr, id, title, quote, asset, accent, d1, d2);
-    }
-
     private void renderResultState(Context ctx, AppWidgetManager mgr, int id,
                                    String title, String quote, String asset,
                                    String accent, int d1, int d2) {
         RemoteViews rv = buildBase(ctx, id);
         rv.setViewVisibility(R.id.widget_idle_layout, View.GONE);
         rv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
+        rv.setViewVisibility(R.id.widget_flash, View.GONE);
 
         rv.setTextViewText(R.id.widget_title, title);
         rv.setTextColor(R.id.widget_title, parseColor(accent));
         rv.setTextViewText(R.id.widget_quote, quote);
 
-        // Safe integer resource assignment — zero Binder memory overhead
         int d1Res = DIE_DRAWABLES[Math.max(0, Math.min(5, d1 - 1))];
         int d2Res = DIE_DRAWABLES[Math.max(0, Math.min(5, d2 - 1))];
         rv.setImageViewResource(R.id.widget_die_one, d1Res);
         rv.setImageViewResource(R.id.widget_die_two, d2Res);
 
-        // Downscaled portrait bitmap
         loadPortrait(ctx, rv, asset);
 
         push(mgr, id, rv);
@@ -288,7 +365,6 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     private RemoteViews buildBase(Context ctx, int id) {
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.disco_widget);
 
-        // Explicit broadcast intent targeting DiscoWidgetProvider directly
         Intent intent = new Intent(ctx, DiscoWidgetProvider.class);
         intent.setAction(ACTION_ROLL);
         intent.setPackage(ctx.getPackageName());
@@ -299,7 +375,6 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                 ctx, id, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Attach to root and major layout containers for 100% reliable tap coverage
         rv.setOnClickPendingIntent(R.id.widget_root, pi);
         rv.setOnClickPendingIntent(R.id.widget_idle_layout, pi);
         rv.setOnClickPendingIntent(R.id.widget_result_layout, pi);

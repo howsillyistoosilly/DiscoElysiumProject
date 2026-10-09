@@ -1,95 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Disco Elysium Home-screen Widget
-    Two visual states:
-      1. IDLE   — Centered dice PNGs + "DISCO CHECK" + "TAP TO ROLL"
-      2. RESULT — Full-bleed skill portrait + gradient scrim + skill name + rolled dice + quote
+    Visual states:
+      1. IDLE/STANDBY: "Check your Skill" over the wavy Volition 6-cross card
+      2. ROLLING ANIMATION: Rapid skill montage + emerald green flash
+      3. RESULT/VOLITION: Portrait + rolled dice + title + quote (or Volition cooldown)
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/disco_widget_background">
+    android:background="@drawable/disco_widget_background"
+    android:clipToOutline="true">
 
-    <!-- ═══ IDLE STATE: Centered Dice in the middle ═══ -->
-    <LinearLayout
+    <!-- ═══ STANDBY / IDLE STATE (User's Waved Volition + 6-pip dice card) ═══ -->
+    <FrameLayout
         android:id="@+id/widget_idle_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="16dp"
         android:visibility="visible">
 
-        <TextView
-            android:id="@+id/widget_idle_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <!-- Standby textured background from user reference -->
+        <ImageView
+            android:id="@+id/widget_idle_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:clickable="false"
+            android:contentDescription="@null"
             android:focusable="false"
-            android:letterSpacing="0.08"
-            android:text="DISCO CHECK"
-            android:textColor="#C4A35A"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:scaleType="centerCrop"
+            android:src="@drawable/disco_widget_standby" />
 
-        <!-- Centered 2d6 dice PNGs -->
+        <!-- Centered "Check your Skill" text (crisp, readable, slightly bigger) -->
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:clickable="false"
             android:focusable="false"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <ImageView
-                android:id="@+id/widget_idle_die1"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_marginEnd="6dp"
+            <TextView
+                android:id="@+id/widget_idle_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:clickable="false"
-                android:contentDescription="@null"
                 android:focusable="false"
-                android:src="@drawable/die6" />
+                android:gravity="center"
+                android:letterSpacing="0.02"
+                android:shadowColor="#D0000000"
+                android:shadowDx="0"
+                android:shadowDy="2"
+                android:shadowRadius="6"
+                android:text="Check your Skill"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-            <ImageView
-                android:id="@+id/widget_idle_die2"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_marginStart="6dp"
-                android:clickable="false"
-                android:contentDescription="@null"
-                android:focusable="false"
-                android:src="@drawable/die6" />
         </LinearLayout>
+    </FrameLayout>
 
-        <TextView
-            android:id="@+id/widget_idle_prompt"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:clickable="false"
-            android:focusable="false"
-            android:letterSpacing="0.05"
-            android:text="TAP TO ROLL"
-            android:textColor="#8170B2"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:clickable="false"
-            android:focusable="false"
-            android:text="2D6 Active Check"
-            android:textColor="#777777"
-            android:textSize="10sp" />
-
-    </LinearLayout>
-
-    <!-- ═══ RESULT STATE: Skill Portrait + Roll Details ═══ -->
+    <!-- ═══ RESULT / ANIMATION STATE: Portrait + Roll Details ═══ -->
     <FrameLayout
         android:id="@+id/widget_result_layout"
         android:layout_width="match_parent"
@@ -122,11 +93,13 @@
             android:id="@+id/widget_content"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
             android:gravity="bottom"
             android:orientation="vertical"
             android:padding="14dp">
 
-            <!-- Title bar: Skill name + rolled dice -->
+            <!-- Title bar: Skill name / status + rolled dice -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -145,13 +118,13 @@
                     android:focusable="false"
                     android:maxLines="1"
                     android:textColor="#B7A0E5"
-                    android:textSize="11sp"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
 
                 <ImageView
                     android:id="@+id/widget_die_one"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:layout_marginEnd="4dp"
                     android:clickable="false"
                     android:contentDescription="@null"
@@ -160,8 +133,8 @@
 
                 <ImageView
                     android:id="@+id/widget_die_two"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:clickable="false"
                     android:contentDescription="@null"
                     android:focusable="false"
@@ -180,9 +153,19 @@
                 android:focusable="false"
                 android:maxLines="4"
                 android:textColor="#E8E8E8"
-                android:textSize="12sp" />
+                android:textSize="13sp" />
 
         </LinearLayout>
+
+        <!-- Emerald green flash overlay for check resolution animation -->
+        <View
+            android:id="@+id/widget_flash"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/disco_widget_flash"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone" />
 
     </FrameLayout>
 
