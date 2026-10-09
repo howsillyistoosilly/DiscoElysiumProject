@@ -10,8 +10,7 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/disco_widget_background"
-    android:clipToOutline="true">
+    android:background="@drawable/disco_widget_background">
 
     <!-- ═══ STANDBY / IDLE STATE (User's Waved Volition + 6-pip dice card) ═══ -->
     <FrameLayout
@@ -157,14 +156,15 @@
 
         </LinearLayout>
 
-        <!-- Emerald green flash overlay for check resolution animation -->
-        <View
+        <!-- Emerald green flash overlay (ImageView with shape drawable, strictly allowed in RemoteViews) -->
+        <ImageView
             android:id="@+id/widget_flash"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@drawable/disco_widget_flash"
             android:clickable="false"
+            android:contentDescription="@null"
             android:focusable="false"
+            android:src="@drawable/disco_widget_flash"
             android:visibility="gone" />
 
     </FrameLayout>

@@ -377,6 +377,8 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
 
         rv.setOnClickPendingIntent(R.id.widget_root, pi);
         rv.setOnClickPendingIntent(R.id.widget_idle_layout, pi);
+        rv.setOnClickPendingIntent(R.id.widget_idle_bg, pi);
+        rv.setOnClickPendingIntent(R.id.widget_idle_title, pi);
         rv.setOnClickPendingIntent(R.id.widget_result_layout, pi);
         rv.setOnClickPendingIntent(R.id.widget_content, pi);
         rv.setOnClickPendingIntent(R.id.widget_portrait, pi);
