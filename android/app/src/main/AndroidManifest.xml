@@ -23,6 +23,7 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.discocheck.widget.ROLL" />
+                <action android:name="com.discocheck.widget.RESET" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

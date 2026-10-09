@@ -22,16 +22,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Home-screen widget for Disco Elysium checks.
  *
- * Visual States & Animations:
- *   1. STANDBY/IDLE : User's Waved Volition 6-pip dice card with "Check your Skill".
- *   2. MONTAGE      : Rapid skill portraits flashing + dice rolling + emerald green flash.
- *   3. RESULT       : Resolved skill portrait + rolled dice faces + accent title + quote.
- *   4. VOLITION     : Rapid-tap cooldown (10s) reminder with live seconds remaining.
+ * Visual States & Flow:
+ *   1. STANDBY: ZA/UM Telemetry + "Check your Skill" + Waved Volition 6-pip check art.
+ *   2. MONTAGE: Extended 8-frame portrait montage + tumbling dice.
+ *   3. PROGRESSIVE GLOW: 4-step gradual emerald green pulse before final reveal.
+ *   4. RESULT: Resolved skill portrait + rolled dice faces + accent title + quote + top-right ↺ RESET.
+ *   5. VOLITION: Rapid-tap cooldown (10s) reminder with live countdown.
  */
 public final class DiscoWidgetProvider extends AppWidgetProvider {
 
-    private static final String TAG         = "DiscoWidget";
-    public static final String ACTION_ROLL  = "com.discocheck.widget.ROLL";
+    private static final String TAG          = "DiscoWidget";
+    public static final String ACTION_ROLL   = "com.discocheck.widget.ROLL";
+    public static final String ACTION_RESET  = "com.discocheck.widget.RESET";
 
     private static final long   COOLDOWN_MS       = 10_000L;
     private static final String PREFS              = "disco_widget_prefs";
@@ -151,6 +153,12 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context ctx, Intent intent) {
         super.onReceive(ctx, intent);
         String action = intent.getAction();
+
+        if (ACTION_RESET.equals(action)) {
+            handleReset(ctx, intent);
+            return;
+        }
+
         if (ACTION_ROLL.equals(action)) {
             AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
             int targetId = intent.getIntExtra(
@@ -166,6 +174,33 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                     for (int id : ids) {
                         handleRoll(ctx, mgr, id);
                     }
+                }
+            }
+        }
+    }
+
+    // ── Reset to Standby Screen ───────────────────────────────────────────────
+
+    private void handleReset(Context ctx, Intent intent) {
+        SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        prefs.edit()
+             .putBoolean(KEY_HAS_ROLLED, false)
+             .remove(KEY_LAST_ROLL_MS)
+             .apply();
+
+        AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
+        int targetId = intent.getIntExtra(
+                AppWidgetManager.EXTRA_APPWIDGET_ID,
+                AppWidgetManager.INVALID_APPWIDGET_ID);
+
+        if (targetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            showIdle(ctx, mgr, targetId);
+        } else {
+            ComponentName cn = new ComponentName(ctx, DiscoWidgetProvider.class);
+            int[] ids = mgr.getAppWidgetIds(cn);
+            if (ids != null) {
+                for (int id : ids) {
+                    showIdle(ctx, mgr, id);
                 }
             }
         }
@@ -263,8 +298,8 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
              .putString(KEY_LAST_ACCENT, finalAccent)
              .apply();
 
-        // ── Phase 1: Rapid Montage Frames (Skill portraits + tumbling dice) ──
-        int montageFrames = 4;
+        // ── Phase 1: Rapid 8-Frame Montage (Skills flashing + tumbling dice) ─
+        int montageFrames = 8;
         for (int i = 0; i < montageFrames; i++) {
             int randIdx = rng.nextInt(SKILLS.length);
             String[] mSkill = SKILLS[randIdx];
@@ -276,7 +311,7 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
             rv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
             rv.setViewVisibility(R.id.widget_flash, View.GONE);
 
-            rv.setTextViewText(R.id.widget_title, "ROLLING CHECK...");
+            rv.setTextViewText(R.id.widget_title, "CHECK IN PROGRESS...");
             rv.setTextColor(R.id.widget_title, 0xFFC4A35A);
             rv.setTextViewText(R.id.widget_quote, "\u201CThe dice tumble through the pale...\u201D");
 
@@ -285,27 +320,38 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
             loadPortrait(ctx, rv, mSkill[2]);
 
             push(mgr, id, rv);
-            try { Thread.sleep(125); } catch (InterruptedException ignored) {}
+            try { Thread.sleep(95); } catch (InterruptedException ignored) {}
         }
 
-        // ── Phase 2: Dramatic Emerald Green Flash Overlay ────────────────────
-        RemoteViews flashRv = buildBase(ctx, id);
-        flashRv.setViewVisibility(R.id.widget_idle_layout, View.GONE);
-        flashRv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
-        flashRv.setViewVisibility(R.id.widget_flash, View.VISIBLE);
+        // ── Phase 2: Gradual Emerald Green Glow (Progressive Swell & Pulse) ──
+        int[] glowDrawables = {
+            R.drawable.disco_widget_flash_1,
+            R.drawable.disco_widget_flash_2,
+            R.drawable.disco_widget_flash_3,
+            R.drawable.disco_widget_flash_1
+        };
+        int[] glowDelays = { 80, 100, 150, 70 };
 
-        flashRv.setTextViewText(R.id.widget_title, "CHECK RESOLVED");
-        flashRv.setTextColor(R.id.widget_title, 0xFF58C878);
-        flashRv.setTextViewText(R.id.widget_quote, "\u201CThe pale recedes.\u201D");
+        for (int step = 0; step < glowDrawables.length; step++) {
+            RemoteViews flashRv = buildBase(ctx, id);
+            flashRv.setViewVisibility(R.id.widget_idle_layout, View.GONE);
+            flashRv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
+            flashRv.setViewVisibility(R.id.widget_flash, View.VISIBLE);
+            flashRv.setImageViewResource(R.id.widget_flash, glowDrawables[step]);
 
-        flashRv.setImageViewResource(R.id.widget_die_one, DIE_DRAWABLES[finalD1 - 1]);
-        flashRv.setImageViewResource(R.id.widget_die_two, DIE_DRAWABLES[finalD2 - 1]);
-        loadPortrait(ctx, flashRv, finalAsset);
+            flashRv.setTextViewText(R.id.widget_title, "CHECK RESOLVED");
+            flashRv.setTextColor(R.id.widget_title, 0xFF58C878);
+            flashRv.setTextViewText(R.id.widget_quote, "\u201CThe pale recedes.\u201D");
 
-        push(mgr, id, flashRv);
-        try { Thread.sleep(180); } catch (InterruptedException ignored) {}
+            flashRv.setImageViewResource(R.id.widget_die_one, DIE_DRAWABLES[finalD1 - 1]);
+            flashRv.setImageViewResource(R.id.widget_die_two, DIE_DRAWABLES[finalD2 - 1]);
+            loadPortrait(ctx, flashRv, finalAsset);
 
-        // ── Phase 3: Final Skill Card Revealed ───────────────────────────────
+            push(mgr, id, flashRv);
+            try { Thread.sleep(glowDelays[step]); } catch (InterruptedException ignored) {}
+        }
+
+        // ── Phase 3: Final Card Cleanly Revealed ─────────────────────────────
         RemoteViews finalRv = buildBase(ctx, id);
         finalRv.setViewVisibility(R.id.widget_idle_layout, View.GONE);
         finalRv.setViewVisibility(R.id.widget_result_layout, View.VISIBLE);
@@ -365,24 +411,40 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     private RemoteViews buildBase(Context ctx, int id) {
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.disco_widget);
 
-        Intent intent = new Intent(ctx, DiscoWidgetProvider.class);
-        intent.setAction(ACTION_ROLL);
-        intent.setPackage(ctx.getPackageName());
-        intent.setComponent(new ComponentName(ctx, DiscoWidgetProvider.class));
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
+        // 1. Roll Intent (targets widget surface)
+        Intent rollIntent = new Intent(ctx, DiscoWidgetProvider.class);
+        rollIntent.setAction(ACTION_ROLL);
+        rollIntent.setPackage(ctx.getPackageName());
+        rollIntent.setComponent(new ComponentName(ctx, DiscoWidgetProvider.class));
+        rollIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
 
-        PendingIntent pi = PendingIntent.getBroadcast(
-                ctx, id, intent,
+        PendingIntent rollPi = PendingIntent.getBroadcast(
+                ctx, id, rollIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        rv.setOnClickPendingIntent(R.id.widget_root, pi);
-        rv.setOnClickPendingIntent(R.id.widget_idle_layout, pi);
-        rv.setOnClickPendingIntent(R.id.widget_idle_bg, pi);
-        rv.setOnClickPendingIntent(R.id.widget_idle_title, pi);
-        rv.setOnClickPendingIntent(R.id.widget_result_layout, pi);
-        rv.setOnClickPendingIntent(R.id.widget_content, pi);
-        rv.setOnClickPendingIntent(R.id.widget_portrait, pi);
-        rv.setOnClickPendingIntent(R.id.widget_scrim, pi);
+        // 2. Reset Intent (targets top-right ↺ RESET button)
+        Intent resetIntent = new Intent(ctx, DiscoWidgetProvider.class);
+        resetIntent.setAction(ACTION_RESET);
+        resetIntent.setPackage(ctx.getPackageName());
+        resetIntent.setComponent(new ComponentName(ctx, DiscoWidgetProvider.class));
+        resetIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
+
+        PendingIntent resetPi = PendingIntent.getBroadcast(
+                ctx, id + 20000, resetIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        // Wire roll action to surface views
+        rv.setOnClickPendingIntent(R.id.widget_root, rollPi);
+        rv.setOnClickPendingIntent(R.id.widget_idle_layout, rollPi);
+        rv.setOnClickPendingIntent(R.id.widget_idle_bg, rollPi);
+        rv.setOnClickPendingIntent(R.id.widget_idle_title, rollPi);
+        rv.setOnClickPendingIntent(R.id.widget_result_layout, rollPi);
+        rv.setOnClickPendingIntent(R.id.widget_content, rollPi);
+        rv.setOnClickPendingIntent(R.id.widget_portrait, rollPi);
+        rv.setOnClickPendingIntent(R.id.widget_scrim, rollPi);
+
+        // Wire reset action to restart button
+        rv.setOnClickPendingIntent(R.id.widget_btn_restart, resetPi);
 
         return rv;
     }
