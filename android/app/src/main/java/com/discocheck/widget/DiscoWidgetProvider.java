@@ -23,11 +23,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Home-screen widget for Disco Elysium checks.
  *
  * Visual States & Flow:
- *   1. STANDBY: ZA/UM Telemetry + "Check your Skill" + Waved Volition 6-pip check art.
- *   2. MONTAGE: Extended 8-frame portrait montage + tumbling dice.
+ *   1. STANDBY: Original state with clean centered "Click to spin" over Waved Volition card.
+ *   2. MONTAGE: Rapid 8-frame skill portraits + tumbling dice.
  *   3. PROGRESSIVE GLOW: 4-step gradual emerald green pulse before final reveal.
- *   4. RESULT: Resolved skill portrait + rolled dice faces + accent title + quote + top-right ↺ RESET.
+ *   4. RESULT: Resolved skill card with top-right circular Volition logo reset button.
  *   5. VOLITION: Rapid-tap cooldown (10s) reminder with live countdown.
+ *   6. REFRESH: Closing/reopening phone (USER_PRESENT) automatically refreshes to original state.
  */
 public final class DiscoWidgetProvider extends AppWidgetProvider {
 
@@ -144,8 +145,9 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
+        // Always present the clean original state when placed or updated
         for (int id : ids) {
-            restoreOrShowIdle(ctx, mgr, id);
+            showIdle(ctx, mgr, id);
         }
     }
 
@@ -154,7 +156,8 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         super.onReceive(ctx, intent);
         String action = intent.getAction();
 
-        if (ACTION_RESET.equals(action)) {
+        // Closing and reopening phone (USER_PRESENT) or tapping retry button resets to original state
+        if (Intent.ACTION_USER_PRESENT.equals(action) || ACTION_RESET.equals(action)) {
             handleReset(ctx, intent);
             return;
         }
@@ -179,7 +182,7 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // ── Reset to Standby Screen ───────────────────────────────────────────────
+    // ── Reset to Original State ("Click to spin" on Waved Volition card) ─────
 
     private void handleReset(Context ctx, Intent intent) {
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -189,9 +192,9 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
              .apply();
 
         AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
-        int targetId = intent.getIntExtra(
-                AppWidgetManager.EXTRA_APPWIDGET_ID,
-                AppWidgetManager.INVALID_APPWIDGET_ID);
+        int targetId = intent != null
+                ? intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+                : AppWidgetManager.INVALID_APPWIDGET_ID;
 
         if (targetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             showIdle(ctx, mgr, targetId);
@@ -207,22 +210,6 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     }
 
     // ── State & Roll handling ─────────────────────────────────────────────────
-
-    private void restoreOrShowIdle(Context ctx, AppWidgetManager mgr, int id) {
-        SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        boolean hasRolled = prefs.getBoolean(KEY_HAS_ROLLED, false);
-        if (!hasRolled) {
-            showIdle(ctx, mgr, id);
-        } else {
-            String title = prefs.getString(KEY_LAST_TITLE, "DISCO CHECK");
-            String quote = prefs.getString(KEY_LAST_QUOTE, "\u201CTap to roll.\u201D");
-            String asset = prefs.getString(KEY_LAST_ASSET, "skills/Psyche/Volition.jpg");
-            String accent = prefs.getString(KEY_LAST_ACCENT, "#8170B2");
-            int d1 = prefs.getInt(KEY_LAST_D1, 6);
-            int d2 = prefs.getInt(KEY_LAST_D2, 6);
-            renderResultState(ctx, mgr, id, title, quote, asset, accent, d1, d2);
-        }
-    }
 
     private void showIdle(Context ctx, AppWidgetManager mgr, int id) {
         RemoteViews rv = buildBase(ctx, id);
@@ -411,7 +398,7 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     private RemoteViews buildBase(Context ctx, int id) {
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.disco_widget);
 
-        // 1. Roll Intent (targets widget surface)
+        // 1. Roll Intent (targets widget surface to trigger roll)
         Intent rollIntent = new Intent(ctx, DiscoWidgetProvider.class);
         rollIntent.setAction(ACTION_ROLL);
         rollIntent.setPackage(ctx.getPackageName());
@@ -422,7 +409,7 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                 ctx, id, rollIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // 2. Reset Intent (targets top-right ↺ RESET button)
+        // 2. Reset Intent (targets top-right circular Volition logo button)
         Intent resetIntent = new Intent(ctx, DiscoWidgetProvider.class);
         resetIntent.setAction(ACTION_RESET);
         resetIntent.setPackage(ctx.getPackageName());
@@ -443,7 +430,7 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         rv.setOnClickPendingIntent(R.id.widget_portrait, rollPi);
         rv.setOnClickPendingIntent(R.id.widget_scrim, rollPi);
 
-        // Wire reset action to restart button
+        // Wire reset action to circular logo retry button
         rv.setOnClickPendingIntent(R.id.widget_btn_restart, resetPi);
 
         return rv;

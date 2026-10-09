@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Disco Elysium Home-screen Widget
-    Visual states:
-      1. STANDBY: ZA/UM Developer styled check screen ("Check your Skill" + telemetry + 6-pip pips)
-      2. MONTAGE: Rapid skill portraits (8 frames) + tumbling dice + progressive green glow
-      3. RESULT: Resolved skill portrait + rolled dice + title + quote (with top-right RESET button)
+    States:
+      1. STANDBY: Waved Volition 6-pip check art with clean centered "Click to spin" (no other text/colors)
+      2. MONTAGE: 8 rapid skill frames + tumbling dice + 4-step progressive green glow
+      3. RESULT: Resolved check card with top-right circular Volition logo reset button
       4. VOLITION: Rapid-tap cooldown (10s) reminder with live countdown
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -13,14 +13,14 @@
     android:layout_height="match_parent"
     android:background="@drawable/disco_widget_background">
 
-    <!-- ═══ STANDBY / IDLE STATE (ZA/UM Art-Directed Check Screen) ═══ -->
+    <!-- ═══ STANDBY / IDLE STATE (Clean "Click to spin" over Waved Volition 6-cross card) ═══ -->
     <FrameLayout
         android:id="@+id/widget_idle_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="visible">
 
-        <!-- Standby textured background (Waved Volition with 6 dice crosses) -->
+        <!-- Standby textured background from user reference -->
         <ImageView
             android:id="@+id/widget_idle_bg"
             android:layout_width="match_parent"
@@ -31,143 +31,31 @@
             android:scaleType="centerCrop"
             android:src="@drawable/disco_widget_standby" />
 
-        <!-- ZA/UM UI Overlay (Telemetry, Typography, Branding) -->
+        <!-- Clean centered text: "Click to spin" (crisp white, no other text or colors) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clickable="false"
             android:focusable="false"
-            android:orientation="vertical"
-            android:padding="13dp">
+            android:gravity="center"
+            android:orientation="vertical">
 
-            <!-- ZA/UM Top Telemetry Header -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/widget_idle_title"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:clickable="false"
-                android:focusable="false"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:letterSpacing="0.12"
-                    android:shadowColor="#E0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="4"
-                    android:text="REV. 0.57 // ACTIVE CHECK"
-                    android:textColor="#C4A35A"
-                    android:textSize="9sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:letterSpacing="0.1"
-                    android:shadowColor="#E0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="4"
-                    android:text="[ 2D6 ]"
-                    android:textColor="#8170B2"
-                    android:textSize="9sp"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
-
-            <!-- ZA/UM Center Core: "Check your Skill" (prominent, bold, tracked) -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
                 android:clickable="false"
                 android:focusable="false"
                 android:gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_idle_title"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:gravity="center"
-                    android:letterSpacing="0.04"
-                    android:shadowColor="#F0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="2"
-                    android:shadowRadius="8"
-                    android:text="Check your Skill"
-                    android:textColor="#FFFFFF"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:gravity="center"
-                    android:letterSpacing="0.14"
-                    android:shadowColor="#E0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="4"
-                    android:text="— THROW THE BONES —"
-                    android:textColor="#B7A0E5"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
-
-            <!-- ZA/UM Bottom Telemetry Footer -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clickable="false"
-                android:focusable="false"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:letterSpacing="0.08"
-                    android:shadowColor="#E0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="4"
-                    android:text="INTELLECT • PSYCHE • PHYSIQUE • MOTORICS"
-                    android:textColor="#888888"
-                    android:textSize="8sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:letterSpacing="0.08"
-                    android:shadowColor="#E0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="4"
-                    android:text="ZA/UM"
-                    android:textColor="#777777"
-                    android:textSize="8sp"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
+                android:letterSpacing="0.02"
+                android:shadowColor="#E0000000"
+                android:shadowDx="0"
+                android:shadowDy="2"
+                android:shadowRadius="8"
+                android:text="Click to spin"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
 
         </LinearLayout>
     </FrameLayout>
@@ -200,7 +88,7 @@
             android:scaleType="fitXY"
             android:src="@drawable/disco_widget_scrim" />
 
-        <!-- Top-Right Restart / Reset button -->
+        <!-- Top-Right Circular Volition Logo Restart Button -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -209,23 +97,17 @@
             android:gravity="top|end"
             android:padding="10dp">
 
-            <TextView
+            <ImageView
                 android:id="@+id/widget_btn_restart"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/disco_widget_btn_restart"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/disco_widget_btn_logo"
                 android:clickable="true"
+                android:contentDescription="Reset to original state"
                 android:focusable="true"
-                android:gravity="center"
-                android:letterSpacing="0.08"
-                android:paddingStart="10dp"
-                android:paddingTop="5dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="5dp"
-                android:text="↺ RESET"
-                android:textColor="#C4A35A"
-                android:textSize="10sp"
-                android:textStyle="bold" />
+                android:padding="2dp"
+                android:scaleType="centerCrop"
+                android:src="@mipmap/ic_launcher_round" />
 
         </LinearLayout>
 
