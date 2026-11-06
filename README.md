@@ -14,6 +14,8 @@ same 24-skill dataset as the Go backend.
 | **Criticals** | Snake-eyes (1+1) → **CRITICAL FAILURE**, boxcars (6+6) → **CRITICAL SUCCESS** |
 | **Volition Cooldown** | 10-second roll cooldown — rapid re-taps summon **VOLITION** to urge patience |
 | **Colours** | Per-stat accent: Intellect gold · Psyche purple · Physique rose · Motorics teal |
+| **Nothing palette** | Widget frame and app dashboard use wallpaper-driven Nothing/Material You tokens on Android 12+ |
+| **Dashboard** | Local roll history, critical counts, best total, seven-day activity and skill-group summaries |
 | **Tests** | 14 Go engine unit tests (dice range, asset filenames, critical paths, skill completeness) |
 | **Emulator** | Self-contained browser emulator at `/emulator.html` — no backend required |
 | **CI** | Three-job workflow: engine tests → signed APK → GitHub Release with install notes |
@@ -167,6 +169,8 @@ DiscoElysiumProject/
 │   ├── widget.js              # Widget JS (used by index.html + Android WebView)
 │   └── emulator.html          # Self-contained emulator (no backend needed)
 ├── android/
+│   ├── dashboard.html       # App dashboard and roll preview
+│   ├── dashboard.js         # Local roll history and Material You palette bridge
 │   └── app/src/main/java/…/
 │       ├── MainActivity.java  # WebView activity + JS roll bridge (24 skills)
 │       └── DiscoWidgetProvider.java  # Home-screen widget (24 skills, native)

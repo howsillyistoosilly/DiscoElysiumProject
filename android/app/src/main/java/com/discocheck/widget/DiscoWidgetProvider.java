@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   1. STANDBY: Original state with clean centered "Click to spin" over Waved Volition card.
  *   2. MONTAGE: Rapid 8-frame skill portraits + tumbling dice.
  *   3. PROGRESSIVE GLOW: 4-step gradual emerald green pulse before final reveal.
- *   4. RESULT: Resolved skill card with top-right circular Volition logo reset button.
+ *   4. RESULT: Resolved skill card with portrait, dice, title and quote.
  *   5. VOLITION: Rapid-tap cooldown (10s) reminder with live countdown.
  *   6. REFRESH: Closing/reopening phone (USER_PRESENT) automatically refreshes to original state.
  */
@@ -407,7 +407,6 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
     private RemoteViews buildBase(Context ctx, int id) {
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.disco_widget);
         rv.setContentDescription(R.id.widget_root, "Roll Disco Check. Tap to start.");
-        rv.setContentDescription(R.id.widget_btn_restart, "Reset to the starting card");
 
         // 1. Roll Intent (targets widget surface to trigger roll)
         Intent rollIntent = new Intent(ctx, DiscoWidgetProvider.class);
@@ -420,17 +419,6 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
                 ctx, id, rollIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // 2. Reset Intent (targets top-right circular Volition logo button)
-        Intent resetIntent = new Intent(ctx, DiscoWidgetProvider.class);
-        resetIntent.setAction(ACTION_RESET);
-        resetIntent.setPackage(ctx.getPackageName());
-        resetIntent.setComponent(new ComponentName(ctx, DiscoWidgetProvider.class));
-        resetIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
-
-        PendingIntent resetPi = PendingIntent.getBroadcast(
-                ctx, id + 20000, resetIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
         // Wire roll action to surface views
         rv.setOnClickPendingIntent(R.id.widget_root, rollPi);
         rv.setOnClickPendingIntent(R.id.widget_idle_layout, rollPi);
@@ -440,9 +428,6 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         rv.setOnClickPendingIntent(R.id.widget_content, rollPi);
         rv.setOnClickPendingIntent(R.id.widget_portrait, rollPi);
         rv.setOnClickPendingIntent(R.id.widget_scrim, rollPi);
-
-        // Wire reset action to circular logo retry button
-        rv.setOnClickPendingIntent(R.id.widget_btn_restart, resetPi);
 
         return rv;
     }

@@ -1,6 +1,8 @@
 package com.discocheck.widget;
 
 import android.app.Activity;
+import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
@@ -9,6 +11,7 @@ import android.webkit.WebViewClient;
 
 import org.json.JSONObject;
 
+import java.util.Locale;
 import java.util.Random;
 
 public final class MainActivity extends Activity {
@@ -179,6 +182,49 @@ public final class MainActivity extends Activity {
                 return "{}";
             }
             return result.toString();
+        }
+
+        @JavascriptInterface
+        public String widgetColors() {
+            boolean dark = (getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+            JSONObject colors = new JSONObject();
+            try {
+                colors.put("surface", colorHex(paletteColor(
+                        android.R.color.system_neutral1_50, android.R.color.system_neutral1_900,
+                        dark ? 0xFF121212 : 0xFFF3F0F0, dark)));
+                colors.put("raised", colorHex(paletteColor(
+                        android.R.color.system_neutral1_100, android.R.color.system_neutral1_800,
+                        dark ? 0xFF262424 : 0xFFEAE7E7, dark)));
+                colors.put("text", colorHex(paletteColor(
+                        android.R.color.system_neutral1_900, android.R.color.system_neutral1_50,
+                        dark ? 0xFFF3F0F0 : 0xFF211F1F, dark)));
+                colors.put("muted", colorHex(paletteColor(
+                        android.R.color.system_neutral1_600, android.R.color.system_neutral1_200,
+                        dark ? 0xFFC7C3C2 : 0xFF686565, dark)));
+                colors.put("border", colorHex(paletteColor(
+                        android.R.color.system_neutral1_200, android.R.color.system_neutral1_800,
+                        dark ? 0xFF383636 : 0xFFD8D4D4, dark)));
+                colors.put("accent", colorHex(paletteColor(
+                        android.R.color.system_accent1_600, android.R.color.system_accent1_100,
+                        dark ? 0xFFDDD2FA : 0xFF8170B2, dark)));
+                colors.put("secondary", colorHex(paletteColor(
+                        android.R.color.system_accent2_100, android.R.color.system_accent2_100,
+                        dark ? 0xFFD9D0E9 : 0xFF75698D, dark)));
+            } catch (Exception ignored) {
+                return "{}";
+            }
+            return colors.toString();
+        }
+
+        private int paletteColor(int lightResource, int darkResource, int fallback, boolean dark) {
+            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    ? MainActivity.this.getColor(dark ? darkResource : lightResource)
+                    : fallback;
+        }
+
+        private String colorHex(int color) {
+            return String.format(Locale.US, "#%06X", color & 0xFFFFFF);
         }
     }
 }

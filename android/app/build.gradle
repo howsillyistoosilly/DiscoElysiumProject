@@ -53,7 +53,7 @@ tasks.register("stageWidgetAssets", Copy) {
 
 tasks.register("stageDashboardAssets", Copy) {
     from("$projectRoot/android") {
-        include "dashboard.html"
+        include "dashboard.html", "dashboard.js"
     }
     into("$projectRoot/android/app/src/main/assets")
 }

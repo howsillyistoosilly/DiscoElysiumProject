@@ -28,10 +28,9 @@ async function rollCheck() {
 
 function renderRoll(data) {
   const widget = document.querySelector("#widget");
-  widget.style.setProperty("--accent", data.accent_color || "#777");
   const header = document.querySelector("#header");
   header.textContent = data.header;
-  header.className = data.is_critical ? "critical" : "";
+  header.classList.toggle("critical", Boolean(data.is_critical));
   const quote = document.querySelector("#quote");
   quote.textContent = `“${data.quote}”`;
   const length = data.quote.length;
@@ -50,6 +49,7 @@ function renderRoll(data) {
     `linear-gradient(#0000, #000c), url("${ASSET_BASE}/skills/${data.asset_path}")`;
   document.querySelector("#dice").innerHTML = [data.die1_asset, data.die2_asset]
     .map(asset => `<img alt="die" src="${ASSET_BASE}/${asset}">`).join("");
+  document.dispatchEvent(new CustomEvent("disco:roll", { detail: data }));
 }
 
 async function handleWidgetTap() {
@@ -61,8 +61,10 @@ async function handleWidgetTap() {
   const portrait = document.querySelector("#portrait");
   widget.classList.remove("photo-only");
   widget.setAttribute("aria-label", "Roll Disco Check");
-  photoToggle.setAttribute("aria-label", "View photo");
-  photoToggle.setAttribute("title", "View photo");
+  if (photoToggle) {
+    photoToggle.setAttribute("aria-label", "View photo");
+    photoToggle.setAttribute("title", "View photo");
+  }
   widget.setAttribute("aria-busy", "true");
   try {
     if (!hasShownOpeningRoll) {
@@ -101,7 +103,7 @@ document.querySelector("#widget").addEventListener("keydown", event => {
   }
 });
 
-document.querySelector("#photo-toggle").addEventListener("click", event => {
+document.querySelector("#photo-toggle")?.addEventListener("click", event => {
   event.stopPropagation();
   const widget = document.querySelector("#widget");
   const photoOnly = widget.classList.toggle("photo-only");
