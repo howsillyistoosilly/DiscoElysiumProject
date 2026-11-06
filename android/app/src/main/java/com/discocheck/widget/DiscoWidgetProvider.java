@@ -347,9 +347,14 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         finalRv.setTextViewText(R.id.widget_title, finalTitle);
         finalRv.setTextColor(R.id.widget_title, parseColor(finalAccent));
         finalRv.setTextViewText(R.id.widget_quote, finalQuote);
+        finalRv.setContentDescription(R.id.widget_root,
+                "Roll again. " + finalTitle + ". " + finalQuote
+                        + " Dice: " + finalD1 + " and " + finalD2 + ".");
 
         finalRv.setImageViewResource(R.id.widget_die_one, DIE_DRAWABLES[finalD1 - 1]);
         finalRv.setImageViewResource(R.id.widget_die_two, DIE_DRAWABLES[finalD2 - 1]);
+        finalRv.setContentDescription(R.id.widget_die_one, "First die: " + finalD1);
+        finalRv.setContentDescription(R.id.widget_die_two, "Second die: " + finalD2);
         loadPortrait(ctx, finalRv, finalAsset);
 
         push(mgr, id, finalRv);
@@ -382,11 +387,15 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
         rv.setTextViewText(R.id.widget_title, title);
         rv.setTextColor(R.id.widget_title, parseColor(accent));
         rv.setTextViewText(R.id.widget_quote, quote);
+        rv.setContentDescription(R.id.widget_root,
+                "Roll again. " + title + ". " + quote + " Dice: " + d1 + " and " + d2 + ".");
 
         int d1Res = DIE_DRAWABLES[Math.max(0, Math.min(5, d1 - 1))];
         int d2Res = DIE_DRAWABLES[Math.max(0, Math.min(5, d2 - 1))];
         rv.setImageViewResource(R.id.widget_die_one, d1Res);
         rv.setImageViewResource(R.id.widget_die_two, d2Res);
+        rv.setContentDescription(R.id.widget_die_one, "First die: " + d1);
+        rv.setContentDescription(R.id.widget_die_two, "Second die: " + d2);
 
         loadPortrait(ctx, rv, asset);
 
@@ -397,6 +406,8 @@ public final class DiscoWidgetProvider extends AppWidgetProvider {
 
     private RemoteViews buildBase(Context ctx, int id) {
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.disco_widget);
+        rv.setContentDescription(R.id.widget_root, "Roll Disco Check. Tap to start.");
+        rv.setContentDescription(R.id.widget_btn_restart, "Reset to the starting card");
 
         // 1. Roll Intent (targets widget surface to trigger roll)
         Intent rollIntent = new Intent(ctx, DiscoWidgetProvider.class);

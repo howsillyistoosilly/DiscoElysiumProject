@@ -138,6 +138,14 @@ adb install -r disco-check-v2.0.0.apk
 4. Long-press the home screen → **Widgets** → **Disco Check** → drag to place.
 5. Tap the widget to roll.
 
+On Android 12 and newer, the widget frame and restart control follow the
+wallpaper's Material You palette: light mode uses `system_neutral1_50` and
+`system_accent1_600`, while dark mode uses `system_neutral1_900` and
+`system_accent1_100`. This follows the token mapping documented by
+[`nothing-mtui`](https://github.com/jaikhuranna/nothing-mtui), using Android's
+native system colors as that project recommends for Java/Kotlin apps. Older
+Android versions use the static fallback colors in `res/values/`.
+
 For sideloading the raw widget bundle into a community hub:
 
 ```sh

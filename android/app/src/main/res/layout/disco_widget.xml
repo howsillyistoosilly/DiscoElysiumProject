@@ -140,7 +140,7 @@
                     android:ellipsize="end"
                     android:focusable="false"
                     android:maxLines="1"
-                    android:textColor="#B7A0E5"
+                    android:textColor="@color/disco_widget_title"
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
@@ -175,7 +175,7 @@
                 android:ellipsize="end"
                 android:focusable="false"
                 android:maxLines="4"
-                android:textColor="#E8E8E8"
+                android:textColor="@color/disco_widget_text"
                 android:textSize="13sp" />
 
         </LinearLayout>
